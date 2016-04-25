@@ -1,5 +1,5 @@
 import json
-from MintigoFunctions import *
+from Mi_Functions import *
 
 
 
@@ -19,7 +19,30 @@ def PRINT_FOLLOW_TCP_STREAM(har_file):
         for resp in item['response']['headers']:
             print {resp['name']:resp['value']}
 
-
+def GET_ALL_RECEIVED_IMAGES(har_file):
+    data_to_return_list=[]
+    with open(har_file) as data_file:
+        data = json.load(data_file)
+    entries=data['log']['entries']
+    for item in entries:
+        if item['response']['status']==200:
+            #print item['response']['headers']
+            for header in item['response']['headers']:
+                if header['name']=='Content-Type' and 'image' in header['value'].lower():
+                    data_to_return_list.append({'URL':item['request']['url'],
+                                                'Content-Type':header['value'],
+                                                'ImageSize':item['response']['content']['size']})
+    return data_to_return_list
+        #if 'Content-Type' in item['response']['headers'].keys():
+            #    print item['response']
+        # print item['request']['url']
+        # print '### Request ### '
+        # for req in item['request']['headers']:
+        #     print {req['name']:req['value']}
+        # print '### Response ###'
+        # print item['response']['status']
+        # for resp in item['response']['headers']:
+        #     print {resp['name']:resp['value']}
 
 def CHECK_COMPRESS_RULE(har_file, cached_urls):
     data_to_return_list=[]
@@ -64,30 +87,24 @@ def CHECK_COMPRESS_RULE(har_file, cached_urls):
 
     return data_to_return_list
 
-### Print encodeing in request but missing in response ###
-cached_urls=open('nana.har','r').readlines()
-cached_urls=[item.split(' ')[0] for item in cached_urls]
-result=CHECK_COMPRESS_RULE('nana.har', cached_urls)
-counter=0
-for item in result:
-    #print item.keys()
-    if 'RESPONSE_HEADER' not in item.keys():
-        counter+=1
-        print counter,item
-    #print item
-
-WRITE_DICTS_TO_CSV('nana.csv',result)
-
-
-#
-# print ('\r\n')*10
-
-
-
+# ### Print encodeing in request but missing in response ###
+# cached_urls=open('nana.har','r').readlines()
+# cached_urls=[item.split(' ')[0] for item in cached_urls]
+# result=CHECK_COMPRESS_RULE('nana.har', cached_urls)
 # counter=0
 # for item in result:
 #     #print item.keys()
 #     if 'RESPONSE_HEADER' not in item.keys():
 #         counter+=1
-#         print counter,item['URL']
+#         print counter,item
+#     #print item
+# WRITE_DICTS_TO_CSV('nana.csv',result)
+
+
+### Get all images from har ###
+har_file='Fishki.har'
+result=GET_ALL_RECEIVED_IMAGES(har_file)
+print result
+WRITE_DICTS_TO_CSV(har_file.replace('.har','.csv'),result)
+
 
