@@ -108,3 +108,5 @@ print result
 WRITE_DICTS_TO_CSV(har_file.replace('.har','.csv'),result)
 
 
+
+
