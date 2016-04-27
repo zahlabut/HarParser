@@ -1,5 +1,7 @@
 import json
 from Mi_Functions import *
+import urlparse
+
 
 
 
@@ -127,32 +129,75 @@ def GET_ALL_COOKIES(har_file):
     return all_requests_cookies+all_response_cookies
 
 
-#Test - export all Request and Response cookies into csv file + filter out cookie that aren't in report
+def GET_ALL_DOMAINS(har_file):
+    all_domains=[]
+    with open(har_file) as data_file:
+        data = json.load(data_file)
+    entries=data['log']['entries']
+    for item in entries:
+        host=None
+        referer=None
+        for h in item['request']['headers']:
+            if 'host' in str(h).lower():
+                host=h['value']
+        for h in item['request']['headers']:
+            if 'referer' in str(h).lower():
+                referer=h['value']
+
+        all_domains.append(
+            {'URL':item['request']['url'],
+             'Host':host,
+             'Referer':referer,
+             'ParsedDomain':urlparse.urljoin(item['request']['url'], '/'),
+             'Status':item['response']['status']})
+    return all_domains
+
+
+url = 'http://stackoverflow.com/questions/1234567/blah-blah-blah-blah'
+urlparse.urljoin(url, '/')
+
+
+# Test "fewer domains" export all domains and run statistics
 har_file='fishki.har'
-result=GET_ALL_COOKIES(har_file)
+result=GET_ALL_DOMAINS(har_file)
 WRITE_DICTS_TO_CSV(har_file.replace('.har','.csv'),result)
+print 'Now run Colbotigo.py to analyze the results!'
 
 
-print '\r\nMissing Cookies in report'
-missing=[]
-data=open('report.txt','r').read()
-c=0
-for item in result:
-    if item['URL'] not in data:
-        c+=1
-        print c,item
-        item['Status']='Missing'
-        missing.append(item)
-print '\r\nExisting Cookies in report'
-existing=[]
-c=0
-for item in result:
-    if item['URL'] in data:
-        c+=1
-        print c,item
-        item['Status']='Existing'
-        existing.append(item)
-WRITE_DICTS_TO_CSV(har_file.replace('.har','')+'_missing_existing_Cookies.csv',missing+existing)
+
+
+
+
+
+
+
+#
+# #Test - export all Request and Response cookies into csv file + filter out cookie that aren't in report
+# har_file='fishki.har'
+# result=GET_ALL_COOKIES(har_file)
+# WRITE_DICTS_TO_CSV(har_file.replace('.har','.csv'),result)
+#
+#
+# print '\r\nMissing Cookies in report'
+# missing=[]
+# data=open('report.txt','r').read()
+# c=0
+# for item in result:
+#     if item['URL'] not in data:
+#         c+=1
+#         print c,item
+#         item['Status']='Missing'
+#         missing.append(item)
+# print '\r\nExisting Cookies in report'
+# existing=[]
+# c=0
+# for item in result:
+#     if item['URL'] in data:
+#         c+=1
+#         print c,item
+#         item['Status']='Existing'
+#         existing.append(item)
+# WRITE_DICTS_TO_CSV(har_file.replace('.har','')+'_missing_existing_Cookies.csv',missing+existing)
 
 
 
