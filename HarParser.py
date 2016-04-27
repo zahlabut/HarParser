@@ -31,7 +31,8 @@ def GET_ALL_RECEIVED_IMAGES(har_file):
                 if header['name']=='Content-Type' and 'image' in header['value'].lower():
                     data_to_return_list.append({'URL':item['request']['url'],
                                                 'Content-Type':header['value'],
-                                                'ImageSize':item['response']['content']['size']})
+                                                'ImageSize':item['response']['content']['size'],
+                                               'Response_Headers':item['response']['headers']})
     return data_to_return_list
         #if 'Content-Type' in item['response']['headers'].keys():
             #    print item['response']
@@ -87,6 +88,79 @@ def CHECK_COMPRESS_RULE(har_file, cached_urls):
 
     return data_to_return_list
 
+
+
+
+def GET_ALL_COOKIES(har_file):
+    all_requests_cookies=[]
+    all_response_cookies=[]
+    data_to_return_list=[]
+    with open(har_file) as data_file:
+        data = json.load(data_file)
+    entries=data['log']['entries']
+    for item in entries:
+        host=None
+        referer=None
+        for h in item['request']['headers']:
+            if 'host' in str(h).lower():
+                host=h['value']
+        for h in item['request']['headers']:
+            if 'referer' in str(h).lower():
+                referer=h['value']
+
+        if len(item['request']['cookies'])>0:
+            all_requests_cookies.append(
+                {'URL':item['request']['url'],
+                 'Cookie':item['request']['cookies'],
+                 'Cookie_Length':len(str(item['request']['cookies'])),
+                 'Type':'Request_Cookie',
+                 'Host':host,
+                 'Referer':referer})
+        if len(item['response']['cookies'])>0:
+             all_response_cookies.append(
+                {'URL':item['request']['url'],
+                 'Cookie':item['response']['cookies'],
+                 'Cookie_Length':len(str(item['response']['cookies'])),
+                 'Type':'Response_Cookie',
+                 'Host':host,
+                 'Referer':referer})
+    return all_requests_cookies+all_response_cookies
+
+
+#Test - export all Request and Response cookies into csv file + filter out cookie that aren't in report
+har_file='fishki.har'
+result=GET_ALL_COOKIES(har_file)
+WRITE_DICTS_TO_CSV(har_file.replace('.har','.csv'),result)
+
+
+print '\r\nMissing Cookies in report'
+missing=[]
+data=open('report.txt','r').read()
+c=0
+for item in result:
+    if item['URL'] not in data:
+        c+=1
+        print c,item
+        item['Status']='Missing'
+        missing.append(item)
+print '\r\nExisting Cookies in report'
+existing=[]
+c=0
+for item in result:
+    if item['URL'] in data:
+        c+=1
+        print c,item
+        item['Status']='Existing'
+        existing.append(item)
+WRITE_DICTS_TO_CSV(har_file.replace('.har','')+'_missing_existing_Cookies.csv',missing+existing)
+
+
+
+
+
+
+
+
 # ### Print encodeing in request but missing in response ###
 # cached_urls=open('nana.har','r').readlines()
 # cached_urls=[item.split(' ')[0] for item in cached_urls]
@@ -101,12 +175,80 @@ def CHECK_COMPRESS_RULE(har_file, cached_urls):
 # WRITE_DICTS_TO_CSV('nana.csv',result)
 
 
+
 ### Get all images from har ###
-har_file='Fishki.har'
-result=GET_ALL_RECEIVED_IMAGES(har_file)
-print result
-WRITE_DICTS_TO_CSV(har_file.replace('.har','.csv'),result)
+# har_file='Fishki.har'
+# result=GET_ALL_RECEIVED_IMAGES(har_file)
+# WRITE_DICTS_TO_CSV(har_file.replace('.har','.csv'),result)
 
 
+# #Test filter out all missing JPG images in report
+# print '\r\nMissing JPG Images in report'
+# data=open('report.txt','r').read()
+# c=0
+# for item in result:
+#     if item['URL'] not in data and item['Content-Type']=='image/jpeg':
+#         c+=1
+#         print c,item
+# print '\r\nExisting JPG Images in report'
+# data=open('report.txt','r').read()
+# c=0
+# for item in result:
+#     if item['URL'] in data and item['Content-Type']=='image/jpeg':
+#         c+=1
+#         print c,item
+#
+#
+#
+#
+# #Test filter out all missing GIF images in report
+# print '\r\nMissing GIF Images in report'
+# data=open('report.txt','r').read()
+# c=0
+# for item in result:
+#     if item['URL'] not in data and item['Content-Type']=='image/gif':
+#         c+=1
+#         print c,item
+# print '\r\nExisting GIF Images in report'
+# data=open('report.txt','r').read()
+# c=0
+# for item in result:
+#     if item['URL'] in data and item['Content-Type']=='image/gif':
+#         c+=1
+#         print c,item
+#
+#
+#
+#
+# #Test filter out all missing JPG images in report
+# print '\r\nMissing PNG Images in report'
+# data=open('report.txt','r').read()
+# c=0
+# for item in result:
+#     if item['URL'] not in data and item['Content-Type']=='image/png':
+#         c+=1
+#         print c,item
+# print '\r\nExisting PNG Images in report'
+# data=open('report.txt','r').read()
+# c=0
+# for item in result:
+#     if item['URL'] in data and item['Content-Type']=='image/png':
+#         c+=1
+#         print c,item
 
-
+# #Test if images that have no-transform in cache-control GET header exists in report
+# har_file='cnn.har'
+# result=GET_ALL_RECEIVED_IMAGES(har_file)
+# WRITE_DICTS_TO_CSV(har_file.replace('.har','.csv'),result)
+# data=open('report.txt','r').read()
+# c=0
+# for item in result:
+#     #print item
+#     if 'no-transform' in str(item):
+#         c+=1
+#         print c,item
+#         for h in item['Response_Headers']:
+#             print h
+#
+#         if item['URL'] in data:
+#             print 'yep'
