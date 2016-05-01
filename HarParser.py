@@ -1,8 +1,8 @@
 import json
 from Mi_Functions import *
 import urlparse
-
-
+from tld import get_tld
+import sys
 
 
 
@@ -135,33 +135,98 @@ def GET_ALL_DOMAINS(har_file):
         data = json.load(data_file)
     entries=data['log']['entries']
     for item in entries:
-        host=None
-        referer=None
         for h in item['request']['headers']:
+            host=None
             if 'host' in str(h).lower():
                 host=h['value']
+                break
         for h in item['request']['headers']:
+            referer=None
             if 'referer' in str(h).lower():
+                #print item['request']['headers']
                 referer=h['value']
+                break
 
         all_domains.append(
             {'URL':item['request']['url'],
              'Host':host,
              'Referer':referer,
-             'ParsedDomain':urlparse.urljoin(item['request']['url'], '/'),
+             'ParsedDomain':get_tld(item['request']['url']),
              'Status':item['response']['status']})
     return all_domains
 
 
-url = 'http://stackoverflow.com/questions/1234567/blah-blah-blah-blah'
-urlparse.urljoin(url, '/')
 
 
-# Test "fewer domains" export all domains and run statistics
+### Test "fewer domains" export all domains and run statistics
+### You need to copy the urls into report.txt and to number it, like that:
+# 1,www.ok.ru
+# 1,static3.smi2.net
+# 2,static7.smi2.net
+# 3,clickiocdn.com
 har_file='fishki.har'
+td_parties=open('3rdPartyList.txt','r').read().lower()
 result=GET_ALL_DOMAINS(har_file)
-WRITE_DICTS_TO_CSV(har_file.replace('.har','.csv'),result)
-print 'Now run Colbotigo.py to analyze the results!'
+hosts=[i['Host'] for i in result]
+referers=[i['Referer'] for i in result]
+parsed_domains=[i['ParsedDomain'] for i in result]
+data=open('report.txt','r').read()
+data_lines=open('report.txt','r').readlines()
+data_lines=[d.split(',') for d in data_lines]
+domains=[item['ParsedDomain'] for item in result]
+stat=GET_LIST_STAT(domains)
+updated_result=[]
+
+
+
+for r in result:
+    #if r['Host']!=None:
+    reported_value=None
+    reported_host=None
+    in_report=False
+    for d in data_lines:
+        if r['Host'] == d[1].strip():
+            reported_value=d[0]
+            reported_host=d[1].strip()
+            in_report=True
+            break
+    r.update({'ReportedValue':reported_value})
+    r.update({'ReportedHost':reported_host})
+    r.update({'InReport':in_report})
+    r.update({'CountedHost':hosts.count(r['Host'])})
+    if str(r['Host']).lower() in td_parties:
+        r.update({'Is_3d_Party':True})
+    if str(r['Host']).lower() not in td_parties:
+        r.update({'Is_3d_Party':False})
+
+
+
+    updated_result.append(r)
+WRITE_DICTS_TO_CSV(har_file.replace('.har','.csv'),updated_result)
+
+
+
+
+
+# for s in stat:
+#     status='Missing'
+#     for line in data:
+#         if s[0] in str(line) and int(line.split(',')[0])==s[1]:
+#             status='Exists'
+#             break
+
+
+
+
+
+
+# for rach case: url with 1 resource, url with 2 and url with 3
+#number=1
+#for item in stat:
+#    ADD_LIST_AS_LINE_TO_CSV_FILE()
+#print stat
+
+
 
 
 

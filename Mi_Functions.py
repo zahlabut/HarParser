@@ -262,3 +262,16 @@ def CREATE_EXCEL_SHEETS(file_name,sheet_dict):
     except Exception, e:
         print '*** CREATE_EXCEL_SHEETS!!! ***', e
 
+def GET_LIST_STAT(lst):
+    len_lis=len(lst)
+    data = Counter(lst)
+    out=data.most_common()
+    display_data=[['Value','Appearance','Percentage']]
+    for item in out:
+        line=[]
+        line.append(item[0])
+        line.append(item[1])
+        percentage=item[1]*100.0/len_lis
+        line.append(str(round(percentage,3))+'%')
+        display_data.append(line)
+    return display_data
