@@ -3,7 +3,7 @@ from Mi_Functions import *
 import urlparse
 from tld import get_tld
 import sys
-
+from urlparse import urlparse
 
 
 def PRINT_FOLLOW_TCP_STREAM(har_file):
@@ -34,7 +34,8 @@ def GET_ALL_RECEIVED_IMAGES(har_file):
                     data_to_return_list.append({'URL':item['request']['url'],
                                                 'Content-Type':header['value'],
                                                 'ImageSize':item['response']['content']['size'],
-                                               'Response_Headers':item['response']['headers']})
+                                                'Response_Headers':item['response']['headers']})
+
     return data_to_return_list
         #if 'Content-Type' in item['response']['headers'].keys():
             #    print item['response']
@@ -152,82 +153,58 @@ def GET_ALL_DOMAINS(har_file):
              'Host':host,
              'Referer':referer,
              'ParsedDomain':get_tld(item['request']['url']),
-             'Status':item['response']['status']})
+             'Status':item['response']['status'],
+             'Size':item['response']['content']['size']})
     return all_domains
 
 
-
-
-### Test "fewer domains" export all domains and run statistics
-### You need to copy the urls into report.txt and to number it, like that:
-# 1,www.ok.ru
-# 1,static3.smi2.net
-# 2,static7.smi2.net
-# 3,clickiocdn.com
-har_file='fishki.har'
-td_parties=open('3rdPartyList.txt','r').read().lower()
-result=GET_ALL_DOMAINS(har_file)
-hosts=[i['Host'] for i in result]
-referers=[i['Referer'] for i in result]
-parsed_domains=[i['ParsedDomain'] for i in result]
-data=open('report.txt','r').read()
-data_lines=open('report.txt','r').readlines()
-data_lines=[d.split(',') for d in data_lines]
-domains=[item['ParsedDomain'] for item in result]
-stat=GET_LIST_STAT(domains)
-updated_result=[]
-
-
-
-for r in result:
-    #if r['Host']!=None:
-    reported_value=None
-    reported_host=None
-    in_report=False
-    for d in data_lines:
-        if r['Host'] == d[1].strip():
-            reported_value=d[0]
-            reported_host=d[1].strip()
-            in_report=True
-            break
-    r.update({'ReportedValue':reported_value})
-    r.update({'ReportedHost':reported_host})
-    r.update({'InReport':in_report})
-    r.update({'CountedHost':hosts.count(r['Host'])})
-    if str(r['Host']).lower() in td_parties:
-        r.update({'Is_3d_Party':True})
-    if str(r['Host']).lower() not in td_parties:
-        r.update({'Is_3d_Party':False})
-
-
-
-    updated_result.append(r)
-WRITE_DICTS_TO_CSV(har_file.replace('.har','.csv'),updated_result)
-
-
-
-
-
-# for s in stat:
-#     status='Missing'
-#     for line in data:
-#         if s[0] in str(line) and int(line.split(',')[0])==s[1]:
-#             status='Exists'
+#
+#
+# ### Test "fewer domains" export all domains and run statistics
+# ### You need to copy the urls into report.txt and to number it, like that:
+# # 1,www.ok.ru
+# # 1,static3.smi2.net
+# # 2,static7.smi2.net
+# # 3,clickiocdn.com
+# har_file='fishki.har'
+# td_parties=open('3rdPartyList.txt','r').read().lower()
+# result=GET_ALL_DOMAINS(har_file)
+# hosts=[i['Host'] for i in result]
+# referers=[i['Referer'] for i in result]
+# parsed_domains=[i['ParsedDomain'] for i in result]
+# data=open('report.txt','r').read()
+# data_lines=open('report.txt','r').readlines()
+# data_lines=[d.split(',') for d in data_lines]
+# domains=[item['ParsedDomain'] for item in result]
+# stat=GET_LIST_STAT(domains)
+# updated_result=[]
+#
+#
+#
+# for r in result:
+#     #if r['Host']!=None:
+#     reported_value=None
+#     reported_host=None
+#     in_report=False
+#     for d in data_lines:
+#         if r['Host'] == d[1].strip():
+#             reported_value=d[0]
+#             reported_host=d[1].strip()
+#             in_report=True
 #             break
-
-
-
-
-
-
-# for rach case: url with 1 resource, url with 2 and url with 3
-#number=1
-#for item in stat:
-#    ADD_LIST_AS_LINE_TO_CSV_FILE()
-#print stat
-
-
-
+#     r.update({'ReportedValue':reported_value})
+#     r.update({'ReportedHost':reported_host})
+#     r.update({'InReport':in_report})
+#     r.update({'CountedHost':hosts.count(r['Host'])})
+#     if str(r['Host']).lower() in td_parties:
+#         r.update({'Is_3d_Party':True})
+#     if str(r['Host']).lower() not in td_parties:
+#         r.update({'Is_3d_Party':False})
+#
+#
+#
+#    updated_result.append(r)
+#WRITE_DICTS_TO_CSV(har_file.replace('.har','.csv'),updated_result)
 
 
 
@@ -286,9 +263,24 @@ WRITE_DICTS_TO_CSV(har_file.replace('.har','.csv'),updated_result)
 
 
 
-### Get all images from har ###
+# ### Get all images from har ###
 # har_file='Fishki.har'
 # result=GET_ALL_RECEIVED_IMAGES(har_file)
+# reported_images_in_rule=open('reported_images_in_rule.txt','r').read()
+# exported_pcap_as_csv=open('ExportedFromWireshark.csv','r').read().lower()
+# for r in result:
+#     if r['URL'].lower().strip() in reported_images_in_rule.lower():
+#         r.update({'InReport':True})
+#     else:
+#         r.update({'InReport':False})
+#     #r.update({'Cache':r['Cache']})
+#     parsed = urlparse(r['URL'])
+#     url_path=parsed.path
+#     r.update({'URL_Path':url_path})
+#     if url_path in exported_pcap_as_csv:
+#         r.update({'InPcap':True})
+#     else:
+#         r.update({'InPcap':False})
 # WRITE_DICTS_TO_CSV(har_file.replace('.har','.csv'),result)
 
 
@@ -362,3 +354,70 @@ WRITE_DICTS_TO_CSV(har_file.replace('.har','.csv'),updated_result)
 #
 #         if item['URL'] in data:
 #             print 'yep'
+
+
+#
+# ### Test cache rule ###
+# #Use firefox type about:cache and copy all text into
+#
+# # Read cache_from_firefox.txt content as dictionaries into list
+# firefox_cache=open('cache_from_firefox.txt','r').readlines()
+# firefox_cache=[line.strip() for line in firefox_cache if line.count('\t')>3]
+# headers=firefox_cache[0].split('\t')
+# dict_list=[]
+# for line in firefox_cache[1:]:
+#     dic={}
+#     line=line.split('\t')
+#     for item in line:
+#         dic[headers[line.index(item)]]=item
+#         dict_list.append(dic)
+
+
+
+
+
+
+
+
+
+### Test "Minimize number of third-party resources"
+#1)Copy rule's reult into report as isYou need to copy the urls into report.txt and to number it, like that:
+#2) Take PL and export all to csv
+# 1,static3.smi2.net
+# 2,static7.smi2.net
+
+har_file='fishki.har'
+td_parties=open('3rdPartyList.txt','r').read().lower()
+rules_result=open('report.txt','r').read().lower()
+result=GET_ALL_DOMAINS(har_file)
+packet_list=open('FishkCap.csv','r').read().lower()
+packet_list_lines=open('FishkCap.csv','r').readlines()
+updated_result=[]
+
+
+for r in result:
+    in_rule=False
+    if str(r['URL']).lower() in rules_result:
+        in_rule=True
+    r.update({'Is_In_Rule':in_rule})
+
+
+    in_td_parties=False
+    if str(r['ParsedDomain'].split('.')[0]).lower() in td_parties:
+        in_td_parties=True
+    r.update({'Is_in_3d_Party':in_td_parties})
+
+
+    in_pl=False
+    parsed = urlparse(r['URL'])
+    url_path=parsed.path
+    if url_path in packet_list:
+        in_pl=True
+    r.update({'Parsed_URL_Path':url_path})
+    r.update({'Is_In_PL':in_pl})
+
+    print r.keys()
+    print r['Is_in_3d_Party']
+    updated_result.append(r)
+WRITE_DICTS_TO_CSV(har_file.replace('.har','.csv'),updated_result)
+
