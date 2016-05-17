@@ -91,12 +91,8 @@ def CHECK_COMPRESS_RULE(har_file, cached_urls):
 
     return data_to_return_list
 
-
-
-
 def GET_ALL_COOKIES(har_file):
-    all_requests_cookies=[]
-    all_response_cookies=[]
+    all_cookies=[]
     data_to_return_list=[]
     with open(har_file) as data_file:
         data = json.load(data_file)
@@ -104,31 +100,59 @@ def GET_ALL_COOKIES(har_file):
     for item in entries:
         host=None
         referer=None
+        request_cookie=None
+        response_cookie=None
+        request_cookie_len=None
+        response_cookie_len=None
         for h in item['request']['headers']:
             if 'host' in str(h).lower():
                 host=h['value']
         for h in item['request']['headers']:
             if 'referer' in str(h).lower():
                 referer=h['value']
+        for h in item['request']['headers']:
+            if 'cookie' in str(h).lower():
+                request_cookie=h['value']
+                request_cookie_len=len(request_cookie)
 
-        if len(item['request']['cookies'])>0:
-            all_requests_cookies.append(
-                {'URL':item['request']['url'],
-                 'Cookie':item['request']['cookies'],
-                 'Cookie_Length':len(str(item['request']['cookies'])),
-                 'Type':'Request_Cookie',
-                 'Host':host,
-                 'Referer':referer})
-        if len(item['response']['cookies'])>0:
-             all_response_cookies.append(
-                {'URL':item['request']['url'],
-                 'Cookie':item['response']['cookies'],
-                 'Cookie_Length':len(str(item['response']['cookies'])),
-                 'Type':'Response_Cookie',
-                 'Host':host,
-                 'Referer':referer})
-    return all_requests_cookies+all_response_cookies
+        response_cookie=[]
+        response_cookie_len=[]
+        for h in item['response']['headers']:
+            if 'cookie' in str(h['name']).lower():
+                response_cookie.append({h['name']:h['value'],'Length':len(h['value'])})
+                response_cookie_len.append(len(h['value']))
+        response_cookie_len=sum(response_cookie_len)
 
+        all_cookies.append(
+                        {'URL':item['request']['url'],
+                         'Request_Cookie':request_cookie,
+                         'Request_Cookie_Length':request_cookie_len,
+                         'Response_Cookie':response_cookie,
+                         'Response_Cookie_Length':response_cookie_len,
+                         'Host':host,
+                         'Referer':referer,
+                         'ParsedDomain':get_tld(item['request']['url'])})
+    return all_cookies
+
+    #     if len(item['request']['cookies'])>0:
+    #         all_requests_cookies.append(
+    #             {'URL':item['request']['url'],
+    #              'Cookie':item['request']['cookies'],
+    #              'Cookie_Length':item['request']['cookies']['bodySize'],
+    #              'Type':'Request_Cookie',
+    #              'Host':host,
+    #              'Referer':referer,
+    #              'ParsedDomain':get_tld(item['request']['url'])})
+    #     if len(item['response']['cookies'])>0:
+    #          all_response_cookies.append(
+    #             {'URL':item['request']['url'],
+    #              'Cookie':item['response']['cookies'],
+    #              'Cookie_Length':len(str(item['response']['cookies'])),
+    #              'Type':'Response_Cookie',
+    #              'Host':host,
+    #              'Referer':referer,
+    #              'ParsedDomain':get_tld(item['request']['url'])})
+    # return all_requests_cookies+all_response_cookies
 
 def GET_ALL_DOMAINS(har_file):
     all_domains=[]
@@ -213,13 +237,50 @@ def GET_ALL_DOMAINS(har_file):
 
 
 
-#
-# #Test - export all Request and Response cookies into csv file + filter out cookie that aren't in report
-# har_file='fishki.har'
-# result=GET_ALL_COOKIES(har_file)
-# WRITE_DICTS_TO_CSV(har_file.replace('.har','.csv'),result)
-#
-#
+
+#Test - export all Request and Response cookies into csv file, adding nfo: is in pcap,is_in_report and is_in_3d_parties
+# Rule defenition by Shlomo
+# In case when cookie is in request and not 3d party, violation is true
+# In case when cookie is in Response and its size is bigger than 100 violation is true
+har_file='fishki.har'
+td_parties=open('3rdPartyList.txt','r').read().lower()
+rules_result=open('report.txt','r').read().lower()
+packet_list=open('FishkiCap.csv','r').read().lower()
+packet_list_lines=open('FishkiCap.csv','r').readlines()
+updated_result=[]
+
+
+result=GET_ALL_COOKIES(har_file)
+for r in result:
+    in_rule=False
+    if str(r['URL']).lower() in rules_result:
+        in_rule=True
+    r.update({'Is_In_Rule':in_rule})
+
+
+    in_td_parties=False
+    if str(r['ParsedDomain'].split('.')[0]).lower() in td_parties:
+        in_td_parties=True
+    r.update({'Is_in_3d_Party':in_td_parties})
+
+
+    in_pl=False
+    parsed = urlparse(r['URL'])
+    url_path=parsed.path
+    if url_path in packet_list:
+        in_pl=True
+    r.update({'Parsed_URL_Path':url_path})
+    r.update({'Is_In_PL':in_pl})
+
+    print r.keys()
+    print r['Is_in_3d_Party']
+    updated_result.append(r)
+WRITE_DICTS_TO_CSV(har_file.replace('.har','.csv'),updated_result)
+
+
+
+
+
 # print '\r\nMissing Cookies in report'
 # missing=[]
 # data=open('report.txt','r').read()
@@ -380,44 +441,44 @@ def GET_ALL_DOMAINS(har_file):
 
 
 
-### Test "Minimize number of third-party resources"
-#1)Copy rule's reult into report as isYou need to copy the urls into report.txt and to number it, like that:
-#2) Take PL and export all to csv
-# 1,static3.smi2.net
-# 2,static7.smi2.net
-
-har_file='fishki.har'
-td_parties=open('3rdPartyList.txt','r').read().lower()
-rules_result=open('report.txt','r').read().lower()
-result=GET_ALL_DOMAINS(har_file)
-packet_list=open('FishkCap.csv','r').read().lower()
-packet_list_lines=open('FishkCap.csv','r').readlines()
-updated_result=[]
-
-
-for r in result:
-    in_rule=False
-    if str(r['URL']).lower() in rules_result:
-        in_rule=True
-    r.update({'Is_In_Rule':in_rule})
-
-
-    in_td_parties=False
-    if str(r['ParsedDomain'].split('.')[0]).lower() in td_parties:
-        in_td_parties=True
-    r.update({'Is_in_3d_Party':in_td_parties})
-
-
-    in_pl=False
-    parsed = urlparse(r['URL'])
-    url_path=parsed.path
-    if url_path in packet_list:
-        in_pl=True
-    r.update({'Parsed_URL_Path':url_path})
-    r.update({'Is_In_PL':in_pl})
-
-    print r.keys()
-    print r['Is_in_3d_Party']
-    updated_result.append(r)
-WRITE_DICTS_TO_CSV(har_file.replace('.har','.csv'),updated_result)
-
+# ### Test "Minimize number of third-party resources"
+# #1)Copy rule's reult into report as isYou need to copy the urls into report.txt and to number it, like that:
+# #2) Take PL and export all to csv
+# # 1,static3.smi2.net
+# # 2,static7.smi2.net
+#
+# har_file='fishki.har'
+# td_parties=open('3rdPartyList.txt','r').read().lower()
+# rules_result=open('report.txt','r').read().lower()
+# result=GET_ALL_DOMAINS(har_file)
+# packet_list=open('FishkCap.csv','r').read().lower()
+# packet_list_lines=open('FishkCap.csv','r').readlines()
+# updated_result=[]
+#
+#
+# for r in result:
+#     in_rule=False
+#     if str(r['URL']).lower() in rules_result:
+#         in_rule=True
+#     r.update({'Is_In_Rule':in_rule})
+#
+#
+#     in_td_parties=False
+#     if str(r['ParsedDomain'].split('.')[0]).lower() in td_parties:
+#         in_td_parties=True
+#     r.update({'Is_in_3d_Party':in_td_parties})
+#
+#
+#     in_pl=False
+#     parsed = urlparse(r['URL'])
+#     url_path=parsed.path
+#     if url_path in packet_list:
+#         in_pl=True
+#     r.update({'Parsed_URL_Path':url_path})
+#     r.update({'Is_In_PL':in_pl})
+#
+#     print r.keys()
+#     print r['Is_in_3d_Party']
+#     updated_result.append(r)
+# WRITE_DICTS_TO_CSV(har_file.replace('.har','.csv'),updated_result)
+#
