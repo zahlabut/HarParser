@@ -555,7 +555,7 @@ for d in updated_dict_list:
         section=1
     if reported_urls.find(d['Key '].lower())>section_2_start:
         section=2
-    d.update({'Section':2})
+    d.update({'Section':section})
 
     result_list.append(d)
 
