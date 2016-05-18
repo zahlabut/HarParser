@@ -4,6 +4,7 @@ import urlparse
 from tld import get_tld
 import sys
 from urlparse import urlparse
+from datetime import datetime
 
 
 def PRINT_FOLLOW_TCP_STREAM(har_file):
@@ -134,26 +135,6 @@ def GET_ALL_COOKIES(har_file):
                          'ParsedDomain':get_tld(item['request']['url'])})
     return all_cookies
 
-    #     if len(item['request']['cookies'])>0:
-    #         all_requests_cookies.append(
-    #             {'URL':item['request']['url'],
-    #              'Cookie':item['request']['cookies'],
-    #              'Cookie_Length':item['request']['cookies']['bodySize'],
-    #              'Type':'Request_Cookie',
-    #              'Host':host,
-    #              'Referer':referer,
-    #              'ParsedDomain':get_tld(item['request']['url'])})
-    #     if len(item['response']['cookies'])>0:
-    #          all_response_cookies.append(
-    #             {'URL':item['request']['url'],
-    #              'Cookie':item['response']['cookies'],
-    #              'Cookie_Length':len(str(item['response']['cookies'])),
-    #              'Type':'Response_Cookie',
-    #              'Host':host,
-    #              'Referer':referer,
-    #              'ParsedDomain':get_tld(item['request']['url'])})
-    # return all_requests_cookies+all_response_cookies
-
 def GET_ALL_DOMAINS(har_file):
     all_domains=[]
     with open(har_file) as data_file:
@@ -180,6 +161,25 @@ def GET_ALL_DOMAINS(har_file):
              'Status':item['response']['status'],
              'Size':item['response']['content']['size']})
     return all_domains
+
+
+
+
+def GET_ALL_RESPONSE_HEADERS(har_file):
+    all_urls=[]
+    data=open(har_file,'r').read().decode('utf-8','ignore')
+    data = json.loads(data)
+    entries=data['log']['entries']
+    for item in entries:
+        response_headers=''
+        for i in item['response']['headers']:
+            response_headers+=str(i)+'\r\n'
+        dic={'URL':item['request']['url'],'Response_Headers':response_headers,'Status':item['response']['status']}
+        all_urls.append(dic)
+
+    return all_urls
+
+
 
 
 #
@@ -238,44 +238,44 @@ def GET_ALL_DOMAINS(har_file):
 
 
 
-#Test - export all Request and Response cookies into csv file, adding nfo: is in pcap,is_in_report and is_in_3d_parties
-# Rule defenition by Shlomo
-# In case when cookie is in request and not 3d party, violation is true
-# In case when cookie is in Response and its size is bigger than 100 violation is true
-har_file='fishki.har'
-td_parties=open('3rdPartyList.txt','r').read().lower()
-rules_result=open('report.txt','r').read().lower()
-packet_list=open('FishkiCap.csv','r').read().lower()
-packet_list_lines=open('FishkiCap.csv','r').readlines()
-updated_result=[]
-
-
-result=GET_ALL_COOKIES(har_file)
-for r in result:
-    in_rule=False
-    if str(r['URL']).lower() in rules_result:
-        in_rule=True
-    r.update({'Is_In_Rule':in_rule})
-
-
-    in_td_parties=False
-    if str(r['ParsedDomain'].split('.')[0]).lower() in td_parties:
-        in_td_parties=True
-    r.update({'Is_in_3d_Party':in_td_parties})
-
-
-    in_pl=False
-    parsed = urlparse(r['URL'])
-    url_path=parsed.path
-    if url_path in packet_list:
-        in_pl=True
-    r.update({'Parsed_URL_Path':url_path})
-    r.update({'Is_In_PL':in_pl})
-
-    print r.keys()
-    print r['Is_in_3d_Party']
-    updated_result.append(r)
-WRITE_DICTS_TO_CSV(har_file.replace('.har','.csv'),updated_result)
+# #Test - export all Request and Response cookies into csv file, adding nfo: is in pcap,is_in_report and is_in_3d_parties
+# # Rule defenition by Shlomo
+# # In case when cookie is in request and not 3d party, violation is true
+# # In case when cookie is in Response and its size is bigger than 100 violation is true
+# har_file='rambler.har'
+# td_parties=open('3rdPartyList.txt','r').read().lower()
+# rules_result=open('report.txt','r').read().lower()
+# packet_list=open('RamblerCap.csv','r').read().lower()
+# packet_list_lines=open('RamblerCap.csv','r').readlines()
+# updated_result=[]
+#
+#
+# result=GET_ALL_COOKIES(har_file)
+# for r in result:
+#     in_rule=False
+#     if str(r['URL']).lower() in rules_result:
+#         in_rule=True
+#     r.update({'Is_In_Rule':in_rule})
+#
+#
+#     in_td_parties=False
+#     if str(r['ParsedDomain'].split('.')[0]).lower() in td_parties:
+#         in_td_parties=True
+#     r.update({'Is_in_3d_Party':in_td_parties})
+#
+#
+#     in_pl=False
+#     parsed = urlparse(r['URL'])
+#     url_path=parsed.path
+#     if url_path in packet_list:
+#         in_pl=True
+#     r.update({'Parsed_URL_Path':url_path})
+#     r.update({'Is_In_PL':in_pl})
+#
+#     print r.keys()
+#     print r['Is_in_3d_Party']
+#     updated_result.append(r)
+# WRITE_DICTS_TO_CSV(har_file.replace('.har','.csv'),updated_result)
 
 
 
@@ -417,25 +417,6 @@ WRITE_DICTS_TO_CSV(har_file.replace('.har','.csv'),updated_result)
 #             print 'yep'
 
 
-#
-# ### Test cache rule ###
-# #Use firefox type about:cache and copy all text into
-#
-# # Read cache_from_firefox.txt content as dictionaries into list
-# firefox_cache=open('cache_from_firefox.txt','r').readlines()
-# firefox_cache=[line.strip() for line in firefox_cache if line.count('\t')>3]
-# headers=firefox_cache[0].split('\t')
-# dict_list=[]
-# for line in firefox_cache[1:]:
-#     dic={}
-#     line=line.split('\t')
-#     for item in line:
-#         dic[headers[line.index(item)]]=item
-#         dict_list.append(dic)
-
-
-
-
 
 
 
@@ -482,3 +463,116 @@ WRITE_DICTS_TO_CSV(har_file.replace('.har','.csv'),updated_result)
 #     updated_result.append(r)
 # WRITE_DICTS_TO_CSV(har_file.replace('.har','.csv'),updated_result)
 #
+
+
+
+### Test cache rule ###
+# Test steps
+#1) Usee Firefox only
+#2) Clean Firefox Cache
+#3) Browse to some site while emulation
+#4) Save HAR content to *.har file
+#5) Save Firefox about:cache content to cache_from_firefox.txt
+#6) Save cache rule result into report.txt
+#7) Save PL as CSV into *CAP.csv
+
+# Read cache from CAHCE file as dictionaries into list
+firefox_cache_file='FishkiFirefoxCache.txt'
+firefox_cache=open(firefox_cache_file,'r').readlines()
+firefox_cache=[line.strip() for line in firefox_cache if line.count('\t')>3]
+headers=firefox_cache[0].split('\t')
+dict_list=[]
+for line in firefox_cache[1:]:
+    dic={}
+    line=line.split('\t')
+    for item in line:
+        dic[headers[line.index(item)]]=item
+        dict_list.append(dic)
+# Update all dicts with expiration in days from now
+now=time.strftime("%Y-%m-%d %H:%M:%S")
+now=datetime.strptime(now,"%Y-%m-%d %H:%M:%S")
+updated_dict_list=[]
+for d in dict_list:
+    if 'No expiration time' not in d['Expires ']:
+        line_date=datetime.strptime(d['Expires '],"%Y-%m-%d %H:%M:%S")
+        d['ExpiresInDays']=str(line_date-now)
+        updated_dict_list.append(d)
+    else:
+        d['ExpiresInDays']=None
+        updated_dict_list.append(d)
+
+# Pass over all cached files in loop nd add all relevan data from PL, Report and HAR file
+har_file='Fishki.har'
+pl_file='FishkiCap.csv'
+firefox_cache_file='FishkiFirefoxCache.txt'
+report_file='report.txt'
+td_parties=open('3rdPartyList.txt','r').read().lower()
+rules_result=open(report_file,'r').read().lower()
+packet_list=open(pl_file,'r').read().lower()
+result_list=[]
+har_file_result=GET_ALL_RESPONSE_HEADERS(har_file)
+
+
+for d in updated_dict_list:
+    in_rule=False
+    if d['Key '].lower() in rules_result:
+        in_rule=True
+    d.update({'Is_In_Rule':in_rule})
+
+    in_td_parties=False
+    try:
+        if get_tld(d['Key ']).lower() in td_parties:
+            in_td_parties=True
+    except:
+        pass
+    d.update({'Is_in_3d_Party':in_td_parties})
+
+    in_pl=False
+    parsed = urlparse(d['Key '])
+    url_path=parsed.path
+    if url_path in packet_list:
+        in_pl=True
+    d.update({'Parsed_URL_Path':url_path})
+    d.update({'Is_In_PL':in_pl})
+
+    for item in har_file_result:
+        #print '*'*100
+        #print d['Key ']
+        #print item['URL']
+        if d['Key '].lower().strip()==item['URL'].lower().strip():
+            print d['Key ']
+            print item['URL']
+            d.update({'ResponseHeaders':item['Response_Headers']})
+            d.update({'Status_Code':item['Status']})
+            print d.keys()
+
+
+    #Which section in report
+    reported_urls=open(report_file,'r').read().lower()
+    section_2_start=reported_urls.find('Expiration date is within the next two days'.lower())
+    section=None
+    if reported_urls.find(d['Key '].lower())<section_2_start:
+        section=1
+    if reported_urls.find(d['Key '].lower())>section_2_start:
+        section=2
+    d.update({'Section':2})
+
+    result_list.append(d)
+
+
+
+
+
+WRITE_DICTS_TO_CSV(har_file.replace('.har','.csv'),result_list)
+
+
+
+
+
+
+
+
+
+
+
+
