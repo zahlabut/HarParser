@@ -170,13 +170,18 @@ def GET_ALL_RESPONSE_HEADERS(har_file):
     data=open(har_file,'r').read().decode('utf-8','ignore')
     data = json.loads(data)
     entries=data['log']['entries']
-    for item in entries:
-        response_headers=''
-        for i in item['response']['headers']:
-            response_headers+=str(i)+'\r\n'
-        dic={'URL':item['request']['url'],'Response_Headers':response_headers,'Status':item['response']['status']}
-        all_urls.append(dic)
 
+    for entry in entries:
+        cache_headers=['Cache-Control','Expires','Date','Pragma','Etag','Last-Modified','Age']
+        cache_headers=[item.lower() for item in cache_headers]
+        response_headers=''
+        cache_headers_dic={}
+        for nv in entry['response']['headers']:
+            response_headers+=str(nv)+'\r\n'
+            if nv['name'].lower() in cache_headers:
+                cache_headers_dic.update({nv['name']:nv['value']})
+        dic={'URL':entry['request']['url'],'Response_Headers':response_headers,'Status':entry['response']['status'],'Cache_Headers':cache_headers_dic}
+        all_urls.append(dic)
     return all_urls
 
 
@@ -487,7 +492,7 @@ for line in firefox_cache[1:]:
     line=line.split('\t')
     for item in line:
         dic[headers[line.index(item)]]=item
-        dict_list.append(dic)
+    dict_list.append(dic)
 # Update all dicts with expiration in days from now
 now=time.strftime("%Y-%m-%d %H:%M:%S")
 now=datetime.strptime(now,"%Y-%m-%d %H:%M:%S")
@@ -496,11 +501,9 @@ for d in dict_list:
     if 'No expiration time' not in d['Expires ']:
         line_date=datetime.strptime(d['Expires '],"%Y-%m-%d %H:%M:%S")
         d['ExpiresInDays']=str(line_date-now)
-        updated_dict_list.append(d)
     else:
         d['ExpiresInDays']=None
-        updated_dict_list.append(d)
-
+    updated_dict_list.append(d)
 # Pass over all cached files in loop nd add all relevan data from PL, Report and HAR file
 har_file='Fishki.har'
 pl_file='FishkiCap.csv'
@@ -514,6 +517,7 @@ har_file_result=GET_ALL_RESPONSE_HEADERS(har_file)
 
 
 for d in updated_dict_list:
+    print d['Key ']
     in_rule=False
     if d['Key '].lower() in rules_result:
         in_rule=True
@@ -539,24 +543,31 @@ for d in updated_dict_list:
         #print '*'*100
         #print d['Key ']
         #print item['URL']
+        cacche_headers=''
         if d['Key '].lower().strip()==item['URL'].lower().strip():
             print d['Key ']
             print item['URL']
             d.update({'ResponseHeaders':item['Response_Headers']})
             d.update({'Status_Code':item['Status']})
+            for k in item['Cache_Headers'].keys():
+                cacche_headers+=k+':'+item['Cache_Headers'][k]+'\r\n'
+            d.update({'Cache_Headers':cacche_headers})
             print d.keys()
 
 
     #Which section in report
     reported_urls=open(report_file,'r').read().lower()
     section_2_start=reported_urls.find('Expiration date is within the next two days'.lower())
+    print reported_urls.find(d['Key '].lower())
     section=None
     if reported_urls.find(d['Key '].lower())<section_2_start:
         section=1
     if reported_urls.find(d['Key '].lower())>section_2_start:
         section=2
+    if reported_urls.find(d['Key '].lower())==-1:
+        section=-1
     d.update({'Section':section})
-
+    #print d['Key '],section
     result_list.append(d)
 
 
