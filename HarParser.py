@@ -14,20 +14,9 @@ def IS_CDN(host):
         return None
     else:
         out=out.split('\n')
-        #print out
         for o in out:
             if 'CNAME' in o:
                 return o.strip()
-host='s.atemda.com'
-print IS_CDN(host)
-sys.exit(1)
-
-
-
-
-
-
-
 
 def PRINT_FOLLOW_TCP_STREAM(har_file):
     with open(har_file) as data_file:
@@ -623,6 +612,7 @@ for d in har_file_result:
                 break
     d.update({'Host_In_CdnPlanet':in_cdnplanet})
 
+    d.update({'LinuxHostOutput':IS_CDN(d['Host'])})
 
     in_cdns=False
     if d['Host'].lower() in known_cdns:
