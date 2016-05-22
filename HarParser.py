@@ -5,6 +5,19 @@ from tld import get_tld
 import sys
 from urlparse import urlparse
 from datetime import datetime
+import subprocess
+
+
+def IS_CDN(host):
+    out=subprocess.check_output(["host", "-a",host])
+    print out
+host='s.atemda.com'
+print IS_CDN(host)
+sys.exit(1)
+
+
+
+
 
 
 def PRINT_FOLLOW_TCP_STREAM(har_file):
@@ -569,6 +582,7 @@ def GET_ALL_RESPONSE_HEADERS(har_file):
 
 ### Test CDN rule ###
 # Test steps
+# Run on LINUX as script is using "host" tool
 #1) Browse to some site while emulation
 #2) Save HAR content to *.har file
 #3) Save PL as CSV into *CAP.csv
