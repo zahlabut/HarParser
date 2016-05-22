@@ -13,11 +13,11 @@ def IS_CDN(host):
     if 'CNAME' not in out:
         return None
     else:
-        out=out.split('\r\n')
+        out=out.split('\n')
         print out
         for o in out:
             if 'CNAME' in o:
-                return o
+                return o.strip()
 host='s.atemda.com'
 print IS_CDN(host)
 sys.exit(1)
