@@ -137,8 +137,8 @@ def GET_ALL_COOKIES(har_file):
 
 def GET_ALL_DOMAINS(har_file):
     all_domains=[]
-    with open(har_file) as data_file:
-        data = json.load(data_file)
+    data=open(har_file,'r').read().decode('utf-8','ignore')
+    data = json.loads(data)
     entries=data['log']['entries']
     for item in entries:
         for h in item['request']['headers']:
@@ -152,15 +152,21 @@ def GET_ALL_DOMAINS(har_file):
                 #print item['request']['headers']
                 referer=h['value']
                 break
-
+        parsed_domain=None
+        try:
+            parsed_domain=get_tld(item['request']['url'])
+        except Exception,e:
+            parsed_domain=str(e)
         all_domains.append(
             {'URL':item['request']['url'],
              'Host':host,
              'Referer':referer,
-             'ParsedDomain':get_tld(item['request']['url']),
+             'ParsedDomain':parsed_domain,
              'Status':item['response']['status'],
              'Size':item['response']['content']['size']})
     return all_domains
+
+
 
 
 
@@ -467,121 +473,165 @@ def GET_ALL_RESPONSE_HEADERS(har_file):
 #     print r['Is_in_3d_Party']
 #     updated_result.append(r)
 # WRITE_DICTS_TO_CSV(har_file.replace('.har','.csv'),updated_result)
+
+
+
 #
+# ### Test cache rule ###
+# # Test steps
+# #1) Usee Firefox only
+# #2) Clean Firefox Cache
+# #3) Browse to some site while emulation
+# #4) Save HAR content to *.har file
+# #5) Save Firefox about:cache content to cache_from_firefox.txt
+# #6) Save cache rule result into report.txt
+# #7) Save PL as CSV into *CAP.csv
+#
+# # Read cache from CAHCE file as dictionaries into list
+# firefox_cache_file='FishkiFirefoxCache.txt'
+# firefox_cache=open(firefox_cache_file,'r').readlines()
+# firefox_cache=[line.strip() for line in firefox_cache if line.count('\t')>3]
+# headers=firefox_cache[0].split('\t')
+# dict_list=[]
+# for line in firefox_cache[1:]:
+#     dic={}
+#     line=line.split('\t')
+#     for item in line:
+#         dic[headers[line.index(item)]]=item
+#     dict_list.append(dic)
+# # Update all dicts with expiration in days from now
+# now=time.strftime("%Y-%m-%d %H:%M:%S")
+# now=datetime.strptime(now,"%Y-%m-%d %H:%M:%S")
+# updated_dict_list=[]
+# for d in dict_list:
+#     if 'No expiration time' not in d['Expires ']:
+#         line_date=datetime.strptime(d['Expires '],"%Y-%m-%d %H:%M:%S")
+#         d['ExpiresInDays']=str(line_date-now)
+#     else:
+#         d['ExpiresInDays']=None
+#     updated_dict_list.append(d)
+# # Pass over all cached files in loop nd add all relevan data from PL, Report and HAR file
+# har_file='Fishki.har'
+# pl_file='FishkiCap.csv'
+# firefox_cache_file='FishkiFirefoxCache.txt'
+# report_file='report.txt'
+# td_parties=open('3rdPartyList.txt','r').read().lower()
+# rules_result=open(report_file,'r').read().lower()
+# packet_list=open(pl_file,'r').read().lower()
+# result_list=[]
+# har_file_result=GET_ALL_RESPONSE_HEADERS(har_file)
+#
+#
+# for d in updated_dict_list:
+#     print d['Key ']
+#     in_rule=False
+#     if d['Key '].lower() in rules_result:
+#         in_rule=True
+#     d.update({'Is_In_Rule':in_rule})
+#
+#     in_td_parties=False
+#     try:
+#         if get_tld(d['Key ']).lower() in td_parties:
+#             in_td_parties=True
+#     except:
+#         pass
+#     d.update({'Is_in_3d_Party':in_td_parties})
+#
+#     in_pl=False
+#     parsed = urlparse(d['Key '])
+#     url_path=parsed.path
+#     if url_path in packet_list:
+#         in_pl=True
+#     d.update({'Parsed_URL_Path':url_path})
+#     d.update({'Is_In_PL':in_pl})
+#
+#     for item in har_file_result:
+#         #print '*'*100
+#         #print d['Key ']
+#         #print item['URL']
+#         cache_headers_string= ''
+#         if d['Key '].lower().strip()==item['URL'].lower().strip():
+#             print d['Key ']
+#             print item['URL']
+#             d.update({'ResponseHeaders':item['Response_Headers']})
+#             d.update({'Status_Code':item['Status']})
+#             for k in item['Cache_Headers'].keys():
+#                 cache_headers_string+= k + ':' + item['Cache_Headers'][k] + '\r\n'
+#             d.update({'Cache_Headers_Values':cache_headers_string})
+#             d.update({'Cache_Headers_Keys':item['Cache_Headers'].keys()})
+#             print d.keys()
+#     result_list.append(d)
+# WRITE_DICTS_TO_CSV(har_file.replace('.har','.csv'),result_list)
 
 
 
-### Test cache rule ###
+
+
+### Test CDN rule ###
 # Test steps
-#1) Usee Firefox only
-#2) Clean Firefox Cache
-#3) Browse to some site while emulation
-#4) Save HAR content to *.har file
-#5) Save Firefox about:cache content to cache_from_firefox.txt
-#6) Save cache rule result into report.txt
-#7) Save PL as CSV into *CAP.csv
+#1) Browse to some site while emulation
+#2) Save HAR content to *.har file
+#3) Save PL as CSV into *CAP.csv
+#4) Use http://www.cdnplanet.com/tools/cdnfinder/ and type your tested site in "Full site lookup"
+#5) Save result table from previous step in cdnplanet.csv (File. verify that you can open it with Excel)
 
-# Read cache from CAHCE file as dictionaries into list
-firefox_cache_file='FishkiFirefoxCache.txt'
-firefox_cache=open(firefox_cache_file,'r').readlines()
-firefox_cache=[line.strip() for line in firefox_cache if line.count('\t')>3]
-headers=firefox_cache[0].split('\t')
-dict_list=[]
-for line in firefox_cache[1:]:
-    dic={}
-    line=line.split('\t')
-    for item in line:
-        dic[headers[line.index(item)]]=item
-    dict_list.append(dic)
-# Update all dicts with expiration in days from now
-now=time.strftime("%Y-%m-%d %H:%M:%S")
-now=datetime.strptime(now,"%Y-%m-%d %H:%M:%S")
-updated_dict_list=[]
-for d in dict_list:
-    if 'No expiration time' not in d['Expires ']:
-        line_date=datetime.strptime(d['Expires '],"%Y-%m-%d %H:%M:%S")
-        d['ExpiresInDays']=str(line_date-now)
-    else:
-        d['ExpiresInDays']=None
-    updated_dict_list.append(d)
-# Pass over all cached files in loop nd add all relevan data from PL, Report and HAR file
 har_file='Fishki.har'
 pl_file='FishkiCap.csv'
-firefox_cache_file='FishkiFirefoxCache.txt'
 report_file='report.txt'
+cdn_planet_file='cdnplanet.csv'
+cdn_planet_content=open(cdn_planet_file,'r').read().lower()
+cdn_planet_content_lines=open(cdn_planet_file,'r').readlines()
 td_parties=open('3rdPartyList.txt','r').read().lower()
+known_cdn_file='KnownCdnResources.java'
+known_cdns=open(known_cdn_file,'r').read().lower()
 rules_result=open(report_file,'r').read().lower()
 packet_list=open(pl_file,'r').read().lower()
 result_list=[]
-har_file_result=GET_ALL_RESPONSE_HEADERS(har_file)
+har_file_result=GET_ALL_DOMAINS(har_file)
 
 
-for d in updated_dict_list:
-    print d['Key ']
+for d in har_file_result:
+
+    in_cdnplanet=None
+    if d['Host'].lower() in cdn_planet_content:
+        for line in cdn_planet_content_lines:
+            if d['Host'].lower() in str(line).lower():
+                in_cdnplanet=line.split('\t')[-1].strip()
+                break
+    d.update({'Host_In_CdnPlanet':in_cdnplanet})
+
+
+    in_cdns=False
+    if d['Host'].lower() in known_cdns:
+        in_cdns=True
+    d.update({'Host_In_Known_CDNs':in_cdns})
+
+
     in_rule=False
-    if d['Key '].lower() in rules_result:
+    if d['URL'].lower() in rules_result:
         in_rule=True
     d.update({'Is_In_Rule':in_rule})
 
     in_td_parties=False
     try:
-        if get_tld(d['Key ']).lower() in td_parties:
+        if get_tld(d['URL']).lower() in td_parties:
             in_td_parties=True
-    except:
-        pass
+    except Exception, e:
+        in_td_parties=str(e)
     d.update({'Is_in_3d_Party':in_td_parties})
 
     in_pl=False
-    parsed = urlparse(d['Key '])
+    parsed = urlparse(d['URL'])
     url_path=parsed.path
     if url_path in packet_list:
         in_pl=True
     d.update({'Parsed_URL_Path':url_path})
     d.update({'Is_In_PL':in_pl})
 
-    for item in har_file_result:
-        #print '*'*100
-        #print d['Key ']
-        #print item['URL']
-        cacche_headers=''
-        if d['Key '].lower().strip()==item['URL'].lower().strip():
-            print d['Key ']
-            print item['URL']
-            d.update({'ResponseHeaders':item['Response_Headers']})
-            d.update({'Status_Code':item['Status']})
-            for k in item['Cache_Headers'].keys():
-                cacche_headers+=k+':'+item['Cache_Headers'][k]+'\r\n'
-            d.update({'Cache_Headers':cacche_headers})
-            print d.keys()
-
-
-    #Which section in report
-    reported_urls=open(report_file,'r').read().lower()
-    section_2_start=reported_urls.find('Expiration date is within the next two days'.lower())
-    print reported_urls.find(d['Key '].lower())
-    section=None
-    if reported_urls.find(d['Key '].lower())<section_2_start:
-        section=1
-    if reported_urls.find(d['Key '].lower())>section_2_start:
-        section=2
-    if reported_urls.find(d['Key '].lower())==-1:
-        section=-1
-    d.update({'Section':section})
-    #print d['Key '],section
+    print d
     result_list.append(d)
 
-
-
-
-
 WRITE_DICTS_TO_CSV(har_file.replace('.har','.csv'),result_list)
-
-
-
-
-
-
-
 
 
 
