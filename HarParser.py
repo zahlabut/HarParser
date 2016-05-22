@@ -9,14 +9,17 @@ import subprocess
 
 
 def IS_CDN(host):
-    out=subprocess.check_output(["host", "-a",host])
-    if 'CNAME' not in out:
-        return None
-    else:
-        out=out.split('\n')
-        for o in out:
-            if 'CNAME' in o:
-                return o.strip()
+    try:
+        out=subprocess.check_output(["host", "-a",host])
+        if 'CNAME' not in out:
+            return None
+        else:
+            out=out.split('\n')
+            for o in out:
+                if 'CNAME' in o:
+                    return o.strip()
+    except Exception,e:
+        return str(e)
 
 def PRINT_FOLLOW_TCP_STREAM(har_file):
     with open(har_file) as data_file:
