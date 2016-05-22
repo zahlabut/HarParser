@@ -14,7 +14,7 @@ def IS_CDN(host):
         if 'CNAME' not in out:
             return None
         else:
-            out=out.split('\r')
+            out=out.split('\n')
             for o in out:
                 if 'CNAME' in o:
                     return o.strip()
