@@ -10,10 +10,18 @@ import subprocess
 
 def IS_CDN(host):
     out=subprocess.check_output(["host", "-a",host])
-    print out
+    out=out.split('\r\n')
+    if 'CNAME' not in out:
+        return None
+    else:
+        for o in out:
+            if 'CNAME' in o:
+                return o
 host='s.atemda.com'
 print IS_CDN(host)
 sys.exit(1)
+
+
 
 
 
