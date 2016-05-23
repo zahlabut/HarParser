@@ -180,11 +180,6 @@ def GET_ALL_DOMAINS(har_file):
              'Size':item['response']['content']['size']})
     return all_domains
 
-
-
-
-
-
 def GET_ALL_RESPONSE_HEADERS(har_file):
     all_urls=[]
     data=open(har_file,'r').read().decode('utf-8','ignore')
@@ -207,53 +202,52 @@ def GET_ALL_RESPONSE_HEADERS(har_file):
 
 
 
-#
-#
-# ### Test "fewer domains" export all domains and run statistics
-# ### You need to copy the urls into report.txt and to number it, like that:
-# # 1,www.ok.ru
-# # 1,static3.smi2.net
-# # 2,static7.smi2.net
-# # 3,clickiocdn.com
-# har_file='fishki.har'
-# td_parties=open('3rdPartyList.txt','r').read().lower()
-# result=GET_ALL_DOMAINS(har_file)
-# hosts=[i['Host'] for i in result]
-# referers=[i['Referer'] for i in result]
-# parsed_domains=[i['ParsedDomain'] for i in result]
-# data=open('report.txt','r').read()
-# data_lines=open('report.txt','r').readlines()
-# data_lines=[d.split(',') for d in data_lines]
-# domains=[item['ParsedDomain'] for item in result]
-# stat=GET_LIST_STAT(domains)
-# updated_result=[]
-#
-#
-#
-# for r in result:
-#     #if r['Host']!=None:
-#     reported_value=None
-#     reported_host=None
-#     in_report=False
-#     for d in data_lines:
-#         if r['Host'] == d[1].strip():
-#             reported_value=d[0]
-#             reported_host=d[1].strip()
-#             in_report=True
-#             break
-#     r.update({'ReportedValue':reported_value})
-#     r.update({'ReportedHost':reported_host})
-#     r.update({'InReport':in_report})
-#     r.update({'CountedHost':hosts.count(r['Host'])})
-#     if str(r['Host']).lower() in td_parties:
-#         r.update({'Is_3d_Party':True})
-#     if str(r['Host']).lower() not in td_parties:
-#         r.update({'Is_3d_Party':False})
-#
-#
-#
-#    updated_result.append(r)
-#WRITE_DICTS_TO_CSV(har_file.replace('.har','.csv'),updated_result)
+
+### Section: Test "fewer domains" export all domains and run statistics
+### You need to copy the urls into report.txt and to number it, like that:
+# 1,www.ok.ru
+# 1,static3.smi2.net
+# 2,static7.smi2.net
+# 3,clickiocdn.com
+har_file='fishki.har'
+td_parties=open('3rdPartyList.txt','r').read().lower()
+result=GET_ALL_DOMAINS(har_file)
+hosts=[i['Host'] for i in result]
+referers=[i['Referer'] for i in result]
+parsed_domains=[i['ParsedDomain'] for i in result]
+data=open('report.txt','r').read()
+data_lines=open('report.txt','r').readlines()
+data_lines=[d.split(',') for d in data_lines]
+domains=[item['ParsedDomain'] for item in result]
+stat=GET_LIST_STAT(domains)
+updated_result=[]
+
+
+
+for r in result:
+    #if r['Host']!=None:
+    reported_value=None
+    reported_host=None
+    in_report=False
+    for d in data_lines:
+        if r['Host'] == d[1].strip():
+            reported_value=d[0]
+            reported_host=d[1].strip()
+            in_report=True
+            break
+    r.update({'ReportedValue':reported_value})
+    r.update({'ReportedHost':reported_host})
+    r.update({'InReport':in_report})
+    r.update({'CountedHost':hosts.count(r['Host'])})
+    if str(r['Host']).lower() in td_parties:
+        r.update({'Is_3d_Party':True})
+    if str(r['Host']).lower() not in td_parties:
+        r.update({'Is_3d_Party':False})
+
+
+
+   updated_result.append(r)
+WRITE_DICTS_TO_CSV(har_file.replace('.har','.csv'),updated_result)
 
 
 
@@ -581,47 +575,97 @@ def GET_ALL_RESPONSE_HEADERS(har_file):
 
 
 
-### Test CDN rule ###
+# ### Test CDN rule ###
+# # Test steps
+# # Run on LINUX as script is using "host" tool
+# #1) Browse to some site while emulation
+# #2) Save HAR content to *.har file
+# #3) Save PL as CSV into *CAP.csv
+# #4) Use http://www.cdnplanet.com/tools/cdnfinder/ and type your tested site in "Full site lookup"
+# #5) Save result table from previous step in cdnplanet.csv (File. verify that you can open it with Excel)
+#
+# har_file='Fishki.har'
+# pl_file='FishkiCap.csv'
+# report_file='report.txt'
+# cdn_planet_file='cdnplanet.csv'
+# cdn_planet_content=open(cdn_planet_file,'r').read().lower()
+# cdn_planet_content_lines=open(cdn_planet_file,'r').readlines()
+# td_parties=open('3rdPartyList.txt','r').read().lower()
+# known_cdn_file='KnownCdnResources.java'
+# known_cdns=open(known_cdn_file,'r').read().lower()
+# rules_result=open(report_file,'r').read().lower()
+# packet_list=open(pl_file,'r').read().lower()
+# result_list=[]
+# har_file_result=GET_ALL_DOMAINS(har_file)
+#
+#
+# for d in har_file_result:
+#
+#     in_cdnplanet=None
+#     if d['Host'].lower() in cdn_planet_content:
+#         for line in cdn_planet_content_lines:
+#             if d['Host'].lower() in str(line).lower():
+#                 in_cdnplanet=line.split('\t')[-1].strip()
+#                 break
+#     d.update({'Host_In_CdnPlanet':in_cdnplanet})
+#
+#     d.update({'LinuxHostOutput':IS_CDN(d['Host'])})
+#
+#     in_cdns=False
+#     if d['Host'].lower() in known_cdns:
+#         in_cdns=True
+#     d.update({'Host_In_Known_CDNs':in_cdns})
+#
+#
+#     in_rule=False
+#     if d['URL'].lower() in rules_result:
+#         in_rule=True
+#     d.update({'Is_In_Rule':in_rule})
+#
+#     in_td_parties=False
+#     try:
+#         if get_tld(d['URL']).lower() in td_parties:
+#             in_td_parties=True
+#     except Exception, e:
+#         in_td_parties=str(e)
+#     d.update({'Is_in_3d_Party':in_td_parties})
+#
+#     in_pl=False
+#     parsed = urlparse(d['URL'])
+#     url_path=parsed.path
+#     if url_path in packet_list:
+#         in_pl=True
+#     d.update({'Parsed_URL_Path':url_path})
+#     d.update({'Is_In_PL':in_pl})
+#
+#     print d
+#     result_list.append(d)
+#
+# WRITE_DICTS_TO_CSV(har_file.replace('.har','.csv'),result_list)
+
+
+
+### Test "Minimize number of third-party resources" rule
 # Test steps
-# Run on LINUX as script is using "host" tool
 #1) Browse to some site while emulation
 #2) Save HAR content to *.har file
 #3) Save PL as CSV into *CAP.csv
-#4) Use http://www.cdnplanet.com/tools/cdnfinder/ and type your tested site in "Full site lookup"
-#5) Save result table from previous step in cdnplanet.csv (File. verify that you can open it with Excel)
 
-har_file='Fishki.har'
-pl_file='FishkiCap.csv'
+
+har_file='ynet.har'
+pl_file='ynetCap.csv'
 report_file='report.txt'
-cdn_planet_file='cdnplanet.csv'
-cdn_planet_content=open(cdn_planet_file,'r').read().lower()
-cdn_planet_content_lines=open(cdn_planet_file,'r').readlines()
 td_parties=open('3rdPartyList.txt','r').read().lower()
-known_cdn_file='KnownCdnResources.java'
-known_cdns=open(known_cdn_file,'r').read().lower()
-rules_result=open(report_file,'r').read().lower()
+rules_result=[line for line in open(report_file,'r').readlines() if 'http' in line]
+print 'Objects in report: ',len(rules_result)
+print 'Iniqueue objects: ',len(set(rules_result))
+rules_result=str(set(rules_result)).lower()
 packet_list=open(pl_file,'r').read().lower()
 result_list=[]
 har_file_result=GET_ALL_DOMAINS(har_file)
 
 
 for d in har_file_result:
-
-    in_cdnplanet=None
-    if d['Host'].lower() in cdn_planet_content:
-        for line in cdn_planet_content_lines:
-            if d['Host'].lower() in str(line).lower():
-                in_cdnplanet=line.split('\t')[-1].strip()
-                break
-    d.update({'Host_In_CdnPlanet':in_cdnplanet})
-
-    d.update({'LinuxHostOutput':IS_CDN(d['Host'])})
-
-    in_cdns=False
-    if d['Host'].lower() in known_cdns:
-        in_cdns=True
-    d.update({'Host_In_Known_CDNs':in_cdns})
-
 
     in_rule=False
     if d['URL'].lower() in rules_result:
@@ -643,11 +687,18 @@ for d in har_file_result:
         in_pl=True
     d.update({'Parsed_URL_Path':url_path})
     d.update({'Is_In_PL':in_pl})
-
-    print d
+    print d.keys()
     result_list.append(d)
 
 WRITE_DICTS_TO_CSV(har_file.replace('.har','.csv'),result_list)
+
+
+
+
+
+
+
+
 
 
 
