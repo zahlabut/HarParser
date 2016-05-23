@@ -17,6 +17,7 @@ import pyscreenshot as ImageGrab
 
 def WRITE_DICTS_TO_CSV(csv_name,Dict_List):
     ### Get all unique keys ###
+    print "\r\n### CSV File name is: "+csv_name+' ###'
     DELETE_LOG_CONTENT(csv_name)
     all_keys=[]
     for item in Dict_List:

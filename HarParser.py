@@ -38,8 +38,8 @@ def PRINT_FOLLOW_TCP_STREAM(har_file):
 
 def GET_ALL_RECEIVED_IMAGES(har_file):
     data_to_return_list=[]
-    with open(har_file) as data_file:
-        data = json.load(data_file)
+    data=open(har_file,'r').read().decode('utf-8','ignore')
+    data = json.loads(data)
     entries=data['log']['entries']
     for item in entries:
         if item['response']['status']==200:
@@ -49,8 +49,8 @@ def GET_ALL_RECEIVED_IMAGES(har_file):
                     data_to_return_list.append({'URL':item['request']['url'],
                                                 'Content-Type':header['value'],
                                                 'ImageSize':item['response']['content']['size'],
-                                                'Response_Headers':item['response']['headers']})
-
+                                                'Response_Headers':item['response']['headers'],
+                                                'Status':item['response']['status']})
     return data_to_return_list
         #if 'Content-Type' in item['response']['headers'].keys():
             #    print item['response']
@@ -65,8 +65,8 @@ def GET_ALL_RECEIVED_IMAGES(har_file):
 
 def CHECK_COMPRESS_RULE(har_file, cached_urls):
     data_to_return_list=[]
-    with open(har_file) as data_file:
-        data = json.load(data_file)
+    data=open(har_file,'r').read().decode('utf-8','ignore')
+    data = json.loads(data)
     entries=data['log']['entries']
     for entry in entries:
         #print '_'*150
@@ -93,24 +93,22 @@ def CHECK_COMPRESS_RULE(har_file, cached_urls):
                             data_to_return['Content-Type']={resp_header['name']:resp_header['value']}
         if data_to_return!={}:
             data_to_return_list.append(data_to_return)
-
-    # for item in entries:
-    #     data_to_return={'TYPE':"Encoding in response and no encoding in request"}
-    #     for resp in item['response']['headers']:
-    #         if 'content-encoding' in resp['name']:
-    #             data_to_return['URL']=item['request']['url']
-    #             if 'accept-encoding' not in item['request']['headers']:
-    #                 data_to_return['REQUEST_HEADER']=item['request']['headers']
-    #     if data_to_return!={'TYPE':"Encoding in response and no encoding in request"}:
-    #         data_to_return_list.append(data_to_return)
-
+    for item in entries:
+        data_to_return={'TYPE':"Encoding in response and no encoding in request"}
+        for resp in item['response']['headers']:
+            if 'content-encoding' in resp['name']:
+                data_to_return['URL']=item['request']['url']
+                if 'accept-encoding' not in item['request']['headers']:
+                    data_to_return['REQUEST_HEADER']=item['request']['headers']
+        if data_to_return!={'TYPE':"Encoding in response and no encoding in request"}:
+            data_to_return_list.append(data_to_return)
     return data_to_return_list
 
 def GET_ALL_COOKIES(har_file):
     all_cookies=[]
+    data=open(har_file,'r').read().decode('utf-8','ignore')
+    data = json.loads(data)
     data_to_return_list=[]
-    with open(har_file) as data_file:
-        data = json.load(data_file)
     entries=data['log']['entries']
     for item in entries:
         host=None
@@ -199,90 +197,39 @@ def GET_ALL_RESPONSE_HEADERS(har_file):
         all_urls.append(dic)
     return all_urls
 
-
-
-
-
-### Section: Test "fewer domains" export all domains and run statistics
-### You need to copy the urls into report.txt and to number it, like that:
-# 1,www.ok.ru
-# 1,static3.smi2.net
-# 2,static7.smi2.net
-# 3,clickiocdn.com
-har_file='fishki.har'
-td_parties=open('3rdPartyList.txt','r').read().lower()
-result=GET_ALL_DOMAINS(har_file)
-hosts=[i['Host'] for i in result]
-referers=[i['Referer'] for i in result]
-parsed_domains=[i['ParsedDomain'] for i in result]
-data=open('report.txt','r').read()
-data_lines=open('report.txt','r').readlines()
-data_lines=[d.split(',') for d in data_lines]
-domains=[item['ParsedDomain'] for item in result]
-stat=GET_LIST_STAT(domains)
-updated_result=[]
-
-
-
-for r in result:
-    #if r['Host']!=None:
-    reported_value=None
-    reported_host=None
-    in_report=False
-    for d in data_lines:
-        if r['Host'] == d[1].strip():
-            reported_value=d[0]
-            reported_host=d[1].strip()
-            in_report=True
-            break
-    r.update({'ReportedValue':reported_value})
-    r.update({'ReportedHost':reported_host})
-    r.update({'InReport':in_report})
-    r.update({'CountedHost':hosts.count(r['Host'])})
-    if str(r['Host']).lower() in td_parties:
-        r.update({'Is_3d_Party':True})
-    if str(r['Host']).lower() not in td_parties:
-        r.update({'Is_3d_Party':False})
-
-
-
-   updated_result.append(r)
-WRITE_DICTS_TO_CSV(har_file.replace('.har','.csv'),updated_result)
-
-
-
-
-
-
-
-
-
-# #Test - export all Request and Response cookies into csv file, adding nfo: is in pcap,is_in_report and is_in_3d_parties
-# # Rule defenition by Shlomo
-# # In case when cookie is in request and not 3d party, violation is true
-# # In case when cookie is in Response and its size is bigger than 100 violation is true
-# har_file='rambler.har'
-# td_parties=open('3rdPartyList.txt','r').read().lower()
-# rules_result=open('report.txt','r').read().lower()
-# packet_list=open('RamblerCap.csv','r').read().lower()
-# packet_list_lines=open('RamblerCap.csv','r').readlines()
-# updated_result=[]
-#
-#
-# result=GET_ALL_COOKIES(har_file)
+# ### "Reduce the size of your images (iPhone)" rule ###
+# # 1)	Use Chrome
+# # 2)	Close all tabs except NV
+# # 3)	Open a new TAB with "Developers Tools" opened
+# # 4)	Start Emulation on NV tab
+# # 5)	Browse to some site on second TAB
+# # 6)	Stop NV once site is loaded
+# # 7)	On second TAB use "Copy all as HAR" on "Network" and save all the content into *.har file
+# # 8)	Run NV analyzing and save PL file as *csv (Open *.pcap file with Wireshark go to : File - Export Packet Dissections - As CSV)
+# # 9)	Save NV rule's as *.csv in report.txt file
+# # 10)	Open created result file with Excel and analyze the result according rul'e defenition, result file contains the following columns:
+# # ['Status', 'ImageSize', 'Response_Headers', 'Is_in_3d_Party', 'URL', 'Content-Type', 'Is_In_PL', 'Parsed_URL_Path', 'Is_In_Rule']
+# har_file='ynet.har'
+# report_file='report.txt'
+# pl_file='ynetCap.csv'
+# third_parties_file='3rdPartyList.txt'
+# td_parties=open(third_parties_file,'r').read().lower()
+# result=GET_ALL_RECEIVED_IMAGES(har_file)
+# rules_result=open(report_file,'r').read()
+# packet_list=open(pl_file,'r').read().lower()
+# result_list=[]
 # for r in result:
 #     in_rule=False
-#     if str(r['URL']).lower() in rules_result:
+#     if r['URL'].lower() in rules_result:
 #         in_rule=True
 #     r.update({'Is_In_Rule':in_rule})
-#
-#
 #     in_td_parties=False
-#     if str(r['ParsedDomain'].split('.')[0]).lower() in td_parties:
-#         in_td_parties=True
+#     try:
+#         if get_tld(r['URL']).lower() in td_parties:
+#             in_td_parties=True
+#     except Exception, e:
+#         in_td_parties=str(e)
 #     r.update({'Is_in_3d_Party':in_td_parties})
-#
-#
 #     in_pl=False
 #     parsed = urlparse(r['URL'])
 #     url_path=parsed.path
@@ -290,37 +237,132 @@ WRITE_DICTS_TO_CSV(har_file.replace('.har','.csv'),updated_result)
 #         in_pl=True
 #     r.update({'Parsed_URL_Path':url_path})
 #     r.update({'Is_In_PL':in_pl})
-#
 #     print r.keys()
-#     print r['Is_in_3d_Party']
+#     result_list.append(r)
+# WRITE_DICTS_TO_CSV(har_file.replace('.har','.csv'),result_list)
+
+
+
+
+
+
+
+
+
+# # ### "Fewer domains" rule ###
+# # 1)	Use Chrome
+# # 2)	Close all tabs except NV
+# # 3)	Open a new TAB with "Developers Tools" opened
+# # 4)	Start Emulation on NV tab
+# # 5)	Browse to some site on second TAB
+# # 6)	Stop NV once site is loaded
+# # 7)	On second TAB use "Copy all as HAR" on "Network" and save all the content into *.har file
+# # 8)	Run NV analyzing and save PL file as *csv (Open *.pcap file with Wireshark go to : File - Export Packet Dissections - As CSV)
+# # 9)	Save NV rule's as *.csv in following format
+# # 1,www.ok.ru
+# # 1,static3.smi2.net
+# # 2,static7.smi2.net
+# # 3,clickiocdn.com
+# # 10)	Open created result file with Excel and analyze the result according rul'e defenition, result file contains the following columns:
+# # ['Status', 'ParsedDomain', 'URL', 'Is_In_PL', 'Is_3d_Party', 'Host', 'InReport', 'Referer', 'ReportedValue', 'CountedHost', 'ReportedHost', 'Parsed_URL_Path', 'Size']
+# har_file='Fishki.har'
+# third_parties_file='3rdPartyList.txt'
+# report_file='report.txt'
+# pl_file='ynetCap.csv'
+# td_parties=open(third_parties_file,'r').read().lower()
+# result=GET_ALL_DOMAINS(har_file)
+# hosts=[i['Host'] for i in result]
+# referers=[i['Referer'] for i in result]
+# parsed_domains=[i['ParsedDomain'] for i in result]
+# data=open(report_file,'r').read()
+# data_lines=open(report_file,'r').readlines()
+# data_lines=[d.split(',') for d in data_lines]
+# domains=[item['ParsedDomain'] for item in result]
+# stat=GET_LIST_STAT(domains)
+# packet_list=open(pl_file,'r').read().lower()
+# updated_result=[]
+# for r in result:
+#     #if r['Host']!=None:
+#     reported_value=None
+#     reported_host=None
+#     in_report=False
+#     for d in data_lines:
+#         if r['Host'] == d[1].strip():
+#             reported_value=d[0]
+#             reported_host=d[1].strip()
+#             in_report=True
+#             break
+#     in_pl=False
+#     parsed = urlparse(r['URL'])
+#     url_path=parsed.path
+#     if url_path in packet_list:
+#         in_pl=True
+#     r.update({'Parsed_URL_Path':url_path})
+#     r.update({'Is_In_PL':in_pl})
+#     r.update({'ReportedValue':reported_value})
+#     r.update({'ReportedHost':reported_host})
+#     r.update({'InReport':in_report})
+#     r.update({'CountedHost':hosts.count(r['Host'])})
+#     if str(r['Host']).lower() in td_parties:
+#         r.update({'Is_3d_Party':True})
+#     if str(r['Host']).lower() not in td_parties:
+#         r.update({'Is_3d_Party':False})
 #     updated_result.append(r)
+#     print r.keys()
 # WRITE_DICTS_TO_CSV(har_file.replace('.har','.csv'),updated_result)
 
 
 
 
 
-# print '\r\nMissing Cookies in report'
-# missing=[]
-# data=open('report.txt','r').read()
-# c=0
-# for item in result:
-#     if item['URL'] not in data:
-#         c+=1
-#         print c,item
-#         item['Status']='Missing'
-#         missing.append(item)
-# print '\r\nExisting Cookies in report'
-# existing=[]
-# c=0
-# for item in result:
-#     if item['URL'] in data:
-#         c+=1
-#         print c,item
-#         item['Status']='Existing'
-#         existing.append(item)
-# WRITE_DICTS_TO_CSV(har_file.replace('.har','')+'_missing_existing_Cookies.csv',missing+existing)
 
+
+
+
+
+
+
+# # ### "Try to reduce the size of the cookies" rule ###
+# # # Rule defenition by Shlomo
+# # # In case when cookie is in request and not 3d party, violation is true
+# # # In case when cookie is in Response and its size is bigger than 100 violation is true
+# # 1)	Use Chrome
+# # 2)	Close all tabs except NV
+# # 3)	Open a new TAB with "Developers Tools" opened
+# # 4)	Start Emulation on NV tab
+# # 5)	Browse to some site on second TAB
+# # 6)	Stop NV once site is loaded
+# # 7)	On second TAB use "Copy all as HAR" on "Network" and save all the content into *.har file
+# # 8)	Run NV analyzing and save PL file as *csv (Open *.pcap file with Wireshark go to : File - Export Packet Dissections - As CSV)
+# # 9)	Save NV rule's as *.csv in report.txt file
+# # 10)	Open created result file with Excel and analyze the result according rul'e defenition, result file contains the following columns:
+# # ['Request_Cookie_Length', 'ParsedDomain', 'Is_In_Rule', 'Request_Cookie', 'Response_Cookie_Length', 'URL', 'Is_In_PL', 'Host', 'Referer', 'Is_in_3d_Party', 'Response_Cookie', 'Parsed_URL_Path']
+# har_file='rambler.har'
+# td_parties=open('3rdPartyList.txt','r').read().lower()
+# rules_result=open('report.txt','r').read().lower()
+# packet_list=open('RamblerCap.csv','r').read().lower()
+# packet_list_lines=open('RamblerCap.csv','r').readlines()
+# updated_result=[]
+# result=GET_ALL_COOKIES(har_file)
+# for r in result:
+#     in_rule=False
+#     if str(r['URL']).lower() in rules_result:
+#         in_rule=True
+#     r.update({'Is_In_Rule':in_rule})
+#     in_td_parties=False
+#     if str(r['ParsedDomain'].split('.')[0]).lower() in td_parties:
+#         in_td_parties=True
+#     r.update({'Is_in_3d_Party':in_td_parties})
+#     in_pl=False
+#     parsed = urlparse(r['URL'])
+#     url_path=parsed.path
+#     if url_path in packet_list:
+#         in_pl=True
+#     r.update({'Parsed_URL_Path':url_path})
+#     r.update({'Is_In_PL':in_pl})
+#     print r.keys()
+#     updated_result.append(r)
+# WRITE_DICTS_TO_CSV(har_file.replace('.har','.csv'),updated_result)
 
 
 
@@ -329,9 +371,9 @@ WRITE_DICTS_TO_CSV(har_file.replace('.har','.csv'),updated_result)
 
 
 # ### Print encodeing in request but missing in response ###
-# cached_urls=open('nana.har','r').readlines()
+# cached_urls=open('Fishki.har','r').readlines()
 # cached_urls=[item.split(' ')[0] for item in cached_urls]
-# result=CHECK_COMPRESS_RULE('nana.har', cached_urls)
+# result=CHECK_COMPRESS_RULE('Fishki.har', cached_urls)
 # counter=0
 # for item in result:
 #     #print item.keys()
@@ -341,99 +383,6 @@ WRITE_DICTS_TO_CSV(har_file.replace('.har','.csv'),updated_result)
 #     #print item
 # WRITE_DICTS_TO_CSV('nana.csv',result)
 
-
-
-# ### Get all images from har ###
-# har_file='Fishki.har'
-# result=GET_ALL_RECEIVED_IMAGES(har_file)
-# reported_images_in_rule=open('reported_images_in_rule.txt','r').read()
-# exported_pcap_as_csv=open('ExportedFromWireshark.csv','r').read().lower()
-# for r in result:
-#     if r['URL'].lower().strip() in reported_images_in_rule.lower():
-#         r.update({'InReport':True})
-#     else:
-#         r.update({'InReport':False})
-#     #r.update({'Cache':r['Cache']})
-#     parsed = urlparse(r['URL'])
-#     url_path=parsed.path
-#     r.update({'URL_Path':url_path})
-#     if url_path in exported_pcap_as_csv:
-#         r.update({'InPcap':True})
-#     else:
-#         r.update({'InPcap':False})
-# WRITE_DICTS_TO_CSV(har_file.replace('.har','.csv'),result)
-
-
-# #Test filter out all missing JPG images in report
-# print '\r\nMissing JPG Images in report'
-# data=open('report.txt','r').read()
-# c=0
-# for item in result:
-#     if item['URL'] not in data and item['Content-Type']=='image/jpeg':
-#         c+=1
-#         print c,item
-# print '\r\nExisting JPG Images in report'
-# data=open('report.txt','r').read()
-# c=0
-# for item in result:
-#     if item['URL'] in data and item['Content-Type']=='image/jpeg':
-#         c+=1
-#         print c,item
-#
-#
-#
-#
-# #Test filter out all missing GIF images in report
-# print '\r\nMissing GIF Images in report'
-# data=open('report.txt','r').read()
-# c=0
-# for item in result:
-#     if item['URL'] not in data and item['Content-Type']=='image/gif':
-#         c+=1
-#         print c,item
-# print '\r\nExisting GIF Images in report'
-# data=open('report.txt','r').read()
-# c=0
-# for item in result:
-#     if item['URL'] in data and item['Content-Type']=='image/gif':
-#         c+=1
-#         print c,item
-#
-#
-#
-#
-# #Test filter out all missing JPG images in report
-# print '\r\nMissing PNG Images in report'
-# data=open('report.txt','r').read()
-# c=0
-# for item in result:
-#     if item['URL'] not in data and item['Content-Type']=='image/png':
-#         c+=1
-#         print c,item
-# print '\r\nExisting PNG Images in report'
-# data=open('report.txt','r').read()
-# c=0
-# for item in result:
-#     if item['URL'] in data and item['Content-Type']=='image/png':
-#         c+=1
-#         print c,item
-
-# #Test if images that have no-transform in cache-control GET header exists in report
-# har_file='cnn.har'
-# result=GET_ALL_RECEIVED_IMAGES(har_file)
-# WRITE_DICTS_TO_CSV(har_file.replace('.har','.csv'),result)
-# data=open('report.txt','r').read()
-# c=0
-# for item in result:
-#     #print item
-#     if 'no-transform' in str(item):
-#         c+=1
-#         print c,item
-#         for h in item['Response_Headers']:
-#             print h
-#
-#         if item['URL'] in data:
-#             print 'yep'
 
 
 
@@ -652,45 +601,45 @@ WRITE_DICTS_TO_CSV(har_file.replace('.har','.csv'),updated_result)
 #3) Save PL as CSV into *CAP.csv
 
 
-har_file='ynet.har'
-pl_file='ynetCap.csv'
-report_file='report.txt'
-td_parties=open('3rdPartyList.txt','r').read().lower()
-rules_result=[line for line in open(report_file,'r').readlines() if 'http' in line]
-print 'Objects in report: ',len(rules_result)
-print 'Iniqueue objects: ',len(set(rules_result))
-rules_result=str(set(rules_result)).lower()
-packet_list=open(pl_file,'r').read().lower()
-result_list=[]
-har_file_result=GET_ALL_DOMAINS(har_file)
-
-
-for d in har_file_result:
-
-    in_rule=False
-    if d['URL'].lower() in rules_result:
-        in_rule=True
-    d.update({'Is_In_Rule':in_rule})
-
-    in_td_parties=False
-    try:
-        if get_tld(d['URL']).lower() in td_parties:
-            in_td_parties=True
-    except Exception, e:
-        in_td_parties=str(e)
-    d.update({'Is_in_3d_Party':in_td_parties})
-
-    in_pl=False
-    parsed = urlparse(d['URL'])
-    url_path=parsed.path
-    if url_path in packet_list:
-        in_pl=True
-    d.update({'Parsed_URL_Path':url_path})
-    d.update({'Is_In_PL':in_pl})
-    print d.keys()
-    result_list.append(d)
-
-WRITE_DICTS_TO_CSV(har_file.replace('.har','.csv'),result_list)
+# har_file='ynet.har'
+# pl_file='ynetCap.csv'
+# report_file='report.txt'
+# td_parties=open('3rdPartyList.txt','r').read().lower()
+# rules_result=[line for line in open(report_file,'r').readlines() if 'http' in line]
+# print 'Objects in report: ',len(rules_result)
+# print 'Iniqueue objects: ',len(set(rules_result))
+# rules_result=str(set(rules_result)).lower()
+# packet_list=open(pl_file,'r').read().lower()
+# result_list=[]
+# har_file_result=GET_ALL_DOMAINS(har_file)
+#
+#
+# for d in har_file_result:
+#
+#     in_rule=False
+#     if d['URL'].lower() in rules_result:
+#         in_rule=True
+#     d.update({'Is_In_Rule':in_rule})
+#
+#     in_td_parties=False
+#     try:
+#         if get_tld(d['URL']).lower() in td_parties:
+#             in_td_parties=True
+#     except Exception, e:
+#         in_td_parties=str(e)
+#     d.update({'Is_in_3d_Party':in_td_parties})
+#
+#     in_pl=False
+#     parsed = urlparse(d['URL'])
+#     url_path=parsed.path
+#     if url_path in packet_list:
+#         in_pl=True
+#     d.update({'Parsed_URL_Path':url_path})
+#     d.update({'Is_In_PL':in_pl})
+#     print d.keys()
+#     result_list.append(d)
+#
+# WRITE_DICTS_TO_CSV(har_file.replace('.har','.csv'),result_list)
 
 
 
