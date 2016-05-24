@@ -249,6 +249,29 @@ def GET_ALL_RESPONSE_HEADERS(har_file):
 
 
 
+
+### Print encodeing in request but missing in response ###
+cached_urls=open('ynet.har','r').readlines()
+cached_urls=[item.split(' ')[0] for item in cached_urls]
+result=CHECK_COMPRESS_RULE('Fishki.har', cached_urls)
+counter=0
+for item in result:
+    #print item.keys()
+    if 'RESPONSE_HEADER' not in item.keys():
+        counter+=1
+        print counter,item
+    #print item
+WRITE_DICTS_TO_CSV('nana.csv',result)
+
+
+
+
+
+
+
+
+
+
 # # ### "Fewer domains" rule ###
 # # 1)	Use Chrome
 # # 2)	Close all tabs except NV
@@ -370,18 +393,6 @@ def GET_ALL_RESPONSE_HEADERS(har_file):
 
 
 
-# ### Print encodeing in request but missing in response ###
-# cached_urls=open('Fishki.har','r').readlines()
-# cached_urls=[item.split(' ')[0] for item in cached_urls]
-# result=CHECK_COMPRESS_RULE('Fishki.har', cached_urls)
-# counter=0
-# for item in result:
-#     #print item.keys()
-#     if 'RESPONSE_HEADER' not in item.keys():
-#         counter+=1
-#         print counter,item
-#     #print item
-# WRITE_DICTS_TO_CSV('nana.csv',result)
 
 
 
