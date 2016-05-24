@@ -63,45 +63,37 @@ def GET_ALL_RECEIVED_IMAGES(har_file):
         # for resp in item['response']['headers']:
         #     print {resp['name']:resp['value']}
 
-def CHECK_COMPRESS_RULE(har_file, cached_urls):
+
+def CHECK_COMPRESS_RULE(har_file):
     data_to_return_list=[]
     data=open(har_file,'r').read().decode('utf-8','ignore')
     data = json.loads(data)
     entries=data['log']['entries']
     for entry in entries:
-        #print '_'*150
-        print entry['request']['url']
-        print entry['response']['status']
-        #print entry['response']['status']
-        #print len(entries)
         data_to_return={}
+        accept_encoding_header_value=None
         for req_header in entry['request']['headers']:
-            if 'accept-encoding' in req_header['name'].lower() and\
-                            'content-encoding' not in str(entry['response']['headers']).lower() and\
-                            entry['response']['status']>0 and\
-                            'https' not in entry['request']['url'] and\
-                            entry['response']['bodySize']>0 and\
-                            entry['request']['url'] not in cached_urls:
-                data_to_return['URL']=entry['request']['url']
-                data_to_return['Code']=entry['response']['status']
-                data_to_return['Accept-Encoding']={req_header['name']:req_header['value']}
-                data_to_return['Response_Headers']=entry['response']['headers']
-                data_to_return['Response_Body_Size']=entry['response']['content']['size']
-                for resp_header in entry['response']['headers']:
-                    for resp_header in entry['response']['headers']:
-                        if 'content-type' in resp_header['name'].lower():
-                            data_to_return['Content-Type']={resp_header['name']:resp_header['value']}
-        if data_to_return!={}:
-            data_to_return_list.append(data_to_return)
-    for item in entries:
-        data_to_return={'TYPE':"Encoding in response and no encoding in request"}
-        for resp in item['response']['headers']:
-            if 'content-encoding' in resp['name']:
-                data_to_return['URL']=item['request']['url']
-                if 'accept-encoding' not in item['request']['headers']:
-                    data_to_return['REQUEST_HEADER']=item['request']['headers']
-        if data_to_return!={'TYPE':"Encoding in response and no encoding in request"}:
-            data_to_return_list.append(data_to_return)
+            if 'accept-encoding'==req_header['name'].lower():
+                accept_encoding_header_value=req_header['value']
+        data_to_return['Accept-Encoding']=accept_encoding_header_value
+        data_to_return['URL']=entry['request']['url']
+        data_to_return['Code']=entry['response']['status']
+        data_to_return['Response_Headers']=entry['response']['headers']
+        data_to_return['Response_Body_Size']=entry['response']['content']['size']
+        content_length_header_value=None
+        content_type_header_value=None
+        content_encoding_header_value=None
+        for resp_header in entry['response']['headers']:
+            if 'content-type'==resp_header['name'].lower():
+                content_type_header_value=resp_header['value']
+            if 'content-encoding'==resp_header['name'].lower():
+                content_encoding_header_value=resp_header['value']
+            if 'content-length'==resp_header['name'].lower():
+                content_length_header_value=resp_header['value']
+        data_to_return['Content-Length']=content_length_header_value
+        data_to_return['Content-Type']=content_type_header_value
+        data_to_return['Content-Encoding']=content_encoding_header_value
+        data_to_return_list.append(data_to_return)
     return data_to_return_list
 
 def GET_ALL_COOKIES(har_file):
@@ -232,7 +224,7 @@ def GET_ALL_RESPONSE_HEADERS(har_file):
 #     r.update({'Is_in_3d_Party':in_td_parties})
 #     in_pl=False
 #     parsed = urlparse(r['URL'])
-#     url_path=parsed.path
+#     url_path=parsed.path.lower()
 #     if url_path in packet_list:
 #         in_pl=True
 #     r.update({'Parsed_URL_Path':url_path})
@@ -250,18 +242,53 @@ def GET_ALL_RESPONSE_HEADERS(har_file):
 
 
 
-### Print encodeing in request but missing in response ###
-cached_urls=open('ynet.har','r').readlines()
-cached_urls=[item.split(' ')[0] for item in cached_urls]
-result=CHECK_COMPRESS_RULE('Fishki.har', cached_urls)
-counter=0
-for item in result:
-    #print item.keys()
-    if 'RESPONSE_HEADER' not in item.keys():
-        counter+=1
-        print counter,item
-    #print item
-WRITE_DICTS_TO_CSV('nana.csv',result)
+
+# ### "Compress Components" rule ###
+# # 1)	Use Chrome
+# # 2)	Close all tabs except NV
+# # 3)	Open a new TAB with "Developers Tools" opened
+# # 4)	Start Emulation on NV tab
+# # 5)	Browse to some site on second TAB
+# # 6)	Stop NV once site is loaded
+# # 7)	On second TAB use "Copy all as HAR" on "Network" and save all the content into *.har file
+# # 8)	Run NV analyzing and save PL file as *csv (Open *.pcap file with Wireshark go to : File - Export Packet Dissections - As CSV)
+# # 9)	Save NV rule's as *.csv in report.txt file
+# # 10)	Open created result file with Excel and analyze the result according rule's defenition, result file contains the following columns:
+# # ['Content-Length', 'Code', 'Accept-Encoding', 'Response_Headers', 'Content-Encoding', 'URL', 'Response_Body_Size', 'Is_In_PL', 'Is_in_3d_Party', 'Content-Type', 'Parsed_URL_Path', 'Is_In_Rule']
+# # Note: see Issue 20340, you can see current implementation there
+# har_file='ynet.har'
+# pl_file='ynetCap.csv'
+# report_file='report.txt'
+# td_parties=open('3rdPartyList.txt','r').read().lower()
+# rules_result=open(report_file,'r').read().lower()
+# packet_list=open(pl_file,'r').read().lower()
+# result_list=[]
+# result=CHECK_COMPRESS_RULE(har_file)
+# for d in result:
+#     in_rule=False
+#     if d['URL'].lower() in rules_result:
+#         in_rule=True
+#     d.update({'Is_In_Rule':in_rule})
+#     in_td_parties=False
+#     try:
+#         if get_tld(d['URL']).lower() in td_parties:
+#             in_td_parties=True
+#     except Exception, e:
+#         in_td_parties=str(e)
+#     d.update({'Is_in_3d_Party':in_td_parties})
+#     in_pl=False
+#     parsed = urlparse(d['URL'])
+#     url_path=parsed.path.lower()
+#     if url_path in packet_list:
+#         in_pl=True
+#     d.update({'Parsed_URL_Path':url_path})
+#     d.update({'Is_In_PL':in_pl})
+#     print d.keys()
+#     result_list.append(d)
+# WRITE_DICTS_TO_CSV(har_file.replace('.har','.csv'),result_list)
+#
+#
+#
 
 
 
@@ -317,7 +344,7 @@ WRITE_DICTS_TO_CSV('nana.csv',result)
 #             break
 #     in_pl=False
 #     parsed = urlparse(r['URL'])
-#     url_path=parsed.path
+#     url_path=parsed.path.lower()
 #     if url_path in packet_list:
 #         in_pl=True
 #     r.update({'Parsed_URL_Path':url_path})
@@ -378,7 +405,7 @@ WRITE_DICTS_TO_CSV('nana.csv',result)
 #     r.update({'Is_in_3d_Party':in_td_parties})
 #     in_pl=False
 #     parsed = urlparse(r['URL'])
-#     url_path=parsed.path
+#     url_path=parsed.path.lower()
 #     if url_path in packet_list:
 #         in_pl=True
 #     r.update({'Parsed_URL_Path':url_path})
@@ -431,7 +458,7 @@ WRITE_DICTS_TO_CSV('nana.csv',result)
 #
 #     in_pl=False
 #     parsed = urlparse(r['URL'])
-#     url_path=parsed.path
+#     url_path=parsed.path.lower()
 #     if url_path in packet_list:
 #         in_pl=True
 #     r.update({'Parsed_URL_Path':url_path})
@@ -507,7 +534,7 @@ WRITE_DICTS_TO_CSV('nana.csv',result)
 #
 #     in_pl=False
 #     parsed = urlparse(d['Key '])
-#     url_path=parsed.path
+#     url_path=parsed.path.lower()
 #     if url_path in packet_list:
 #         in_pl=True
 #     d.update({'Parsed_URL_Path':url_path})
@@ -592,7 +619,7 @@ WRITE_DICTS_TO_CSV('nana.csv',result)
 #
 #     in_pl=False
 #     parsed = urlparse(d['URL'])
-#     url_path=parsed.path
+#     url_path=parsed.path.lower()
 #     if url_path in packet_list:
 #         in_pl=True
 #     d.update({'Parsed_URL_Path':url_path})
@@ -642,7 +669,7 @@ WRITE_DICTS_TO_CSV('nana.csv',result)
 #
 #     in_pl=False
 #     parsed = urlparse(d['URL'])
-#     url_path=parsed.path
+#     url_path=parsed.path.lower()
 #     if url_path in packet_list:
 #         in_pl=True
 #     d.update({'Parsed_URL_Path':url_path})
