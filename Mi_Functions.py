@@ -17,7 +17,6 @@ import pyscreenshot as ImageGrab
 
 def WRITE_DICTS_TO_CSV(csv_name,Dict_List):
     ### Get all unique keys ###
-    print "\r\n### CSV File name is: "+csv_name+' ###'
     DELETE_LOG_CONTENT(csv_name)
     all_keys=[]
     for item in Dict_List:
@@ -34,7 +33,16 @@ def WRITE_DICTS_TO_CSV(csv_name,Dict_List):
         ADD_LIST_AS_LINE_TO_CSV_FILE(csv_name,list_to_write)
 
 
-
+def SPEC_PRINT(string_list):
+    len_list=[]
+    for item in string_list:
+        len_list.append(len('### '+item.strip()+' ###'))
+    max_len=max(len_list)
+    print ''
+    print"#"*max_len
+    for item in string_list:
+        print "### "+item.strip()+" "*(max_len-len("### "+item.strip())-4)+" ###"
+    print"#"*max_len+'\n'
 
 
 def PIL_SAVE_SCREENSHOT(dst_path,file_name):
