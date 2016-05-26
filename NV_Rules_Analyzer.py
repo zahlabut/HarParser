@@ -454,10 +454,9 @@ if test=='6.1-HTTP Server for "Avoid 4xx and 5xx status codes" rule testing':
         * No app is using it - check with netstat
         * PORT is in ASW server security group
     2) Verify that you don't have connectivity issues by browsing to:
-        http://<AWS_IP>:<SERVER_PORT>/return_code=200/200.jpg
-        from your client machine,you supposed to:
-            * Receive image
-            * Proper output on server side script
+       http://<AWS_IP>:<SERVER_PORT>/return_code=200/200.jpg from your client side (Wget or real Browser),you supposed to:
+        * Receive image
+        * Proper output on server side script
 
     '''
     print usage
