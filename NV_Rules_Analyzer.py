@@ -453,10 +453,11 @@ if test=='6.1-HTTP Server for "Avoid 4xx and 5xx status codes" rule testing':
     usage='''### USAGE ###
     1) Make sure that PORT (my suggestion 8080) you would like to use for your HTTP server is available:
         * No app is using it - check with netstat
-        * PORT is in ASW server security group
+        * PORT is in AWS server security group
     '''
     print usage
     CONTINUE('Are you ready to continue?')
+    import HTTP_Server_Status_Codes
 
 
 
