@@ -6,7 +6,8 @@ import sys
 from urlparse import urlparse
 from datetime import datetime
 import subprocess
-import TrafficTypes
+from Mi_Functions import *
+from TrafficTypes import *
 
 def IS_CDN(host):
     try:
@@ -450,40 +451,39 @@ if test=='5-Fewer domains':
 
 if test=='6.1-HTTP Server for "Avoid 4xx and 5xx status codes" rule testing':
     usage='''### USAGE ###
-    1) Make sure that PORT (my suggestion 8080) you would like to use for your server is available:
+    1) Make sure that PORT (my suggestion 8080) you would like to use for your HTTP server is available:
         * No app is using it - check with netstat
         * PORT is in ASW server security group
-    2) Verify that you don't have connectivity issues by browsing to:
-       http://<AWS_IP>:<SERVER_PORT>/return_code=200/200.jpg from your client side (Wget or real Browser),you supposed to:
-        * HTTP response 200 OK and image
-        * Proper output on server side script, for example:
-            52.3.119.102 - - [26/May/2016 13:38:08] "GET /return_code=200/200.jpg HTTP/1.1" 200 -
     '''
     print usage
     CONTINUE('Are you ready to continue?')
-    import HTTP_Server_Status_Codes
 
 
 
 
-
-
-
-
-#
-# from Mi_Functions import *
-# from TrafficTypes import *
-#
-# legal_rfc_codes=[100, 101, 200, 201, 202, 203, 204, 205, 206, 300, 301, 302, 303, 304, 305, 306, 307, 400, 401, 402, 403, 404, 405, 406, 407, 408, 409, 410, 411, 412, 413, 414, 415, 416, 417, 500, 501, 502, 503, 504, 505]
-# codes_to_check=(i for i in range(0,1001)) #Generator
-# codes_to_check=[100, 101, 102, 200, 201, 202, 203, 204, 205, 206, 207, 208, 226, 300, 301, 302, 303, 304, 305, 306, 307, 308, 404, 400, 401, 402, 403, 404, 405, 406, 407, 408, 409, 410, 411, 412, 413, 414, 415, 416, 417, 418, 421, 422, 423, 424, 426, 428, 429, 431, 451, 500, 501, 502, 503, 504, 505, 506, 507, 508, 510, 511, 103, 420, 420, 450, 498, 499, 499, 509, 530, 440, 449, 451, 444, 495, 496, 497, 499, 520, 521, 522, 523, 524, 525, 526]
-# urls=[]
-# for i in codes_to_check:
-#     urls.append('http://52.20.143.142:8080/return_code='+str(i)+'/'+str(i)+'.jpg')
-#
-#
-# for url in urls:
-#     print HTTP_GET_SITE(url,1)
+if test=='6.2-HTTP Client for "Avoid 4xx and 5xx status codes" rule testing':
+    usage='''### USAGE ###
+    1) Verify that you don't have connectivity issues, by browsing to your server http://<AWS_IP>:<SERVER_PORT>/return_code=200/200.jpg
+        from your client side (wget or real Browser),you supposed to:
+        * HTTP response 200 OK + image
+        * Proper output on server side script, for example:
+            52.3.119.102 - - [26/May/2016 13:38:08] "GET /return_code=200/200.jpg HTTP/1.1" 200 -
+        Note: client URL in example above was http://52.20.143.142:8080/return_code=200/200.jpg
+    2) Start NV Emulation
+    3) Run HTTP requests to all posible HTTP codes (this is what this script section does)
+    4) Run NV Analyzing
+    '''
+    CONTINUE('Are you ready to continue?')
+    server_ip=raw_input('Enter your server IP:')
+    server_port=input('Enter you server port:')
+    legal_rfc_codes=[100, 101, 200, 201, 202, 203, 204, 205, 206, 300, 301, 302, 303, 304, 305, 306, 307, 400, 401, 402, 403, 404, 405, 406, 407, 408, 409, 410, 411, 412, 413, 414, 415, 416, 417, 500, 501, 502, 503, 504, 505]
+    codes_to_check=(i for i in range(0,1001)) #Generator
+    codes_to_check=[100, 101, 102, 200, 201, 202, 203, 204, 205, 206, 207, 208, 226, 300, 301, 302, 303, 304, 305, 306, 307, 308, 404, 400, 401, 402, 403, 404, 405, 406, 407, 408, 409, 410, 411, 412, 413, 414, 415, 416, 417, 418, 421, 422, 423, 424, 426, 428, 429, 431, 451, 500, 501, 502, 503, 504, 505, 506, 507, 508, 510, 511, 103, 420, 420, 450, 498, 499, 499, 509, 530, 440, 449, 451, 444, 495, 496, 497, 499, 520, 521, 522, 523, 524, 525, 526]
+    urls=[]
+    for i in codes_to_check:
+        urls.append('http://'+server_ip+':'+server_port+'/return_code='+str(i)+'/'+str(i)+'.jpg')
+    for url in urls:
+        print HTTP_GET_SITE(url,1)
 
 
 
