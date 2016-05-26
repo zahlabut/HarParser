@@ -6,7 +6,7 @@ import sys
 from urlparse import urlparse
 from datetime import datetime
 import subprocess
-
+import TrafficTypes
 
 def IS_CDN(host):
     try:
@@ -182,11 +182,45 @@ def GET_ALL_RESPONSE_HEADERS(har_file):
 
 TOOL_DESCRIPTION=['NV_Rules_Analyser_Tool','V 1.0','Designed by: Arkady','Goodbye world']
 SPEC_PRINT(TOOL_DESCRIPTION)
-RULES=['Reduce the size of your images','Compress Components']
-rule=CHOOSE_OPTION_FROM_LIST_1(RULES,'Choose Rule you would like to test:')
+RULES=[
+    '1-Validate JPG reported total values',
+    '2-Reduce the size of your images',
+    '3-Compress Components',
+    '4-Try to reduce the size of the cookies',
+    '5-Fewer domains',
+    '6.1-HTTP Server for "Avoid 4xx and 5xx status codes" rule testing',
+    '6.2-HTTP Client for "Avoid 4xx and 5xx status codes" rule testing'
+    ]
+test=CHOOSE_OPTION_FROM_LIST_1(RULES, 'Choose Rule you would like to test:')
+dir_files=[fil for fil in os.listdir('.') if fil.endswith('.py')==False and fil.startswith('.')==False]
 
+if test=='1-Validate JPG reported total values':
+    usage=''' ### USAGE ###
+    1) Browse to www.fishki.net (or any other site) while emulation, once completed run  NV Analytics
+    2) Copy all violated JPG images under:
+        "Reduce the size of your images (iPhone)
+        Optimize images to reduce size. XXX large images totalled XXX M. If optimized they might only take XXX M, a XXX% saving"
+        Into some *.txt file (inside NV_Rules_Analyzer) directory'''
+    print usage
+    CONTINUE('Are you ready to start analyzing process?')
+    report_jpg_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.txt')==True],'Choose rule result (JPG images section) file:')
+    data=open(report_jpg_file,'r').readlines()
+    #For JPG
+    original_size=0
+    optimized_size=0
+    #print 'No\tURL\tSize'
+    for l in data:
+        try:
+            if '.jpg' in l:
+                #print str(data.index(l))+'\t'+l.strip()+'\t'+str(float(l.split('(')[1].split('K')[0].strip()))
+                original_size+=float(l.split('(')[1].split('K')[0].strip())
+                optimized_size+=float(l.split(' size')[1].split('K')[0].strip())
+                #print l.split('%')[0].split(' ')[-1].strip()
+        except Exception,e:
+            print 'ACHTUNG ACHTUNG!!! --> '+str(e)+' '+l.strip()+" Won't be calculated! :( "
+    SPEC_PRINT(['Total original in MB:'+str(original_size/1024),'Total optimized in MB:'+str(optimized_size/1024),'Reduce percentage:'+str(100-optimized_size*100/original_size)+'%'])
 
-if rule=='Reduce the size of your images':
+if test=='2-Reduce the size of your images':
     usage='''### USAGE ###
     1)	Use Chrome
     2)	Close all tabs except NV
@@ -201,7 +235,6 @@ if rule=='Reduce the size of your images':
     ['Status', 'ImageSize', 'Response_Headers', 'Is_in_3d_Party', 'URL', 'Content-Type', 'Is_In_PL', 'Parsed_URL_Path', 'Is_In_Rule']'''
     print usage
     CONTINUE('Are you ready to start analyzing process?')
-    dir_files=[fil for fil in os.listdir('.') if fil.endswith('.py')==False and fil.startswith('.')==False]
     har_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.har')==True],'Choose *har file:')
     report_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.txt')==True],'Choose rule result file:')
     pl_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.csv')==True],'Choose PL file:')
@@ -242,186 +275,216 @@ if rule=='Reduce the size of your images':
 
 
 
+if test=='3-Compress Components':
+    usage='''### USAGE ###
+    1)	Use Chrome
+    2)	Close all tabs except NV
+    3)	Open a new TAB with "Developers Tools" opened
+    4)	Start Emulation on NV tab
+    5)	Browse to some site on second TAB
+    6)	Stop NV once site is loaded
+    7)	On second TAB use "Copy all as HAR" on "Network" and save all the content into *.har file
+    8)	Run NV analyzing and save PL file as *csv (Open *.pcap file with Wireshark go to : File - Export Packet Dissections - As CSV)
+    9)	Save NV rule's as *.csv in report.txt file
+    10)	Open created result file with Excel and analyze the result according rule's defenition, result file contains the following columns:
+    ['Content-Length', 'Code', 'Accept-Encoding', 'Response_Headers', 'Content-Encoding', 'URL', 'Response_Body_Size', 'Is_In_PL', 'Is_in_3d_Party', 'Content-Type', 'Parsed_URL_Path', 'Is_In_Rule']
+    Note: see Issue 20340, you can see current implementation there'''
+    print usage
+    CONTINUE('Are you ready to start analyzing process?')
+    har_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.har')==True],'Choose *har file:')
+    report_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.txt')==True],'Choose rule result file:')
+    pl_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.csv')==True],'Choose PL file:')
+    third_parties_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.txt')==True],'Choose 3rd parties file:')
+    td_parties=open(third_parties_file,'r').read().lower()
+    rules_result=open(report_file,'r').read().lower()
+    packet_list=open(pl_file,'r').read().lower()
+    result_list=[]
+    result=CHECK_COMPRESS_RULE(har_file)
+    for d in result:
+        in_rule=False
+        if d['URL'].lower() in rules_result:
+            in_rule=True
+        d.update({'Is_In_Rule':in_rule})
+        in_td_parties=False
+        try:
+            if get_tld(d['URL']).lower() in td_parties:
+                in_td_parties=True
+        except Exception, e:
+            in_td_parties=str(e)
+        d.update({'Is_in_3d_Party':in_td_parties})
+        in_pl=False
+        parsed = urlparse(d['URL'])
+        url_path=parsed.path.lower()
+        if url_path in packet_list:
+            in_pl=True
+        d.update({'Parsed_URL_Path':url_path})
+        d.update({'Is_In_PL':in_pl})
+        print d
+        result_list.append(d)
+    result_file=har_file.replace('.har','.csv')
+    WRITE_DICTS_TO_CSV(result_file,result_list)
+    SPEC_PRINT(['Your result file is ready!!!','File name: '+result_file])
+
+
+if test=='4-Try to reduce the size of the cookies':
+    usage='''### USAGE ###
+    1)	Use Chrome
+    2)	Close all tabs except NV
+    3)	Open a new TAB with "Developers Tools" opened
+    4)	Start Emulation on NV tab
+    5)	Browse to some site on second TAB
+    6)	Stop NV once site is loaded
+    7)	On second TAB use "Copy all as HAR" on "Network" and save all the content into *.har file
+    8)	Run NV analyzing and save PL file as *csv (Open *.pcap file with Wireshark go to : File - Export Packet Dissections - As CSV)
+    9)	Save NV rule's as *.csv in report.txt file
+    10)	Open created result file with Excel and analyze the result according rul'e defenition, result file contains the following columns:
+    ['Request_Cookie_Length', 'ParsedDomain', 'Is_In_Rule', 'Request_Cookie', 'Response_Cookie_Length', 'URL', 'Is_In_PL', 'Host', 'Referer', 'Is_in_3d_Party', 'Response_Cookie', 'Parsed_URL_Path']
+    '''
+    print usage
+    CONTINUE('Are you ready to start analyzing process?')
+    har_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.har')==True],'Choose *har file:')
+    report_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.txt')==True],'Choose rule result file:')
+    pl_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.csv')==True],'Choose PL file:')
+    third_parties_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.txt')==True],'Choose 3rd parties file:')
+    td_parties=open(third_parties_file,'r').read().lower()
+    rules_result=open(report_file,'r').read().lower()
+    packet_list=open(pl_file,'r').read().lower()
+    packet_list_lines=open(pl_file,'r').readlines()
+    updated_result=[]
+    result=GET_ALL_COOKIES(har_file)
+    for r in result:
+        in_rule=False
+        if str(r['URL']).lower() in rules_result:
+            in_rule=True
+        r.update({'Is_In_Rule':in_rule})
+        in_td_parties=False
+        if str(r['ParsedDomain'].split('.')[0]).lower() in td_parties:
+            in_td_parties=True
+        r.update({'Is_in_3d_Party':in_td_parties})
+        in_pl=False
+        parsed = urlparse(r['URL'])
+        url_path=parsed.path.lower()
+        if url_path in packet_list:
+            in_pl=True
+        r.update({'Parsed_URL_Path':url_path})
+        r.update({'Is_In_PL':in_pl})
+        print r
+        updated_result.append(r)
+    result_file=har_file.replace('.har','.csv')
+    WRITE_DICTS_TO_CSV(result_file,updated_result)
+    SPEC_PRINT(['Your result file is ready!!!','File name: '+result_file])
+
+
+if test=='5-Fewer domains':
+    usage='''### USAGE ###
+    1)	Use Chrome
+    2)	Close all tabs except NV
+    3)	Open a new TAB with "Developers Tools" opened
+    4)	Start Emulation on NV tab
+    5)	Browse to some site on second TAB
+    6)	Stop NV once site is loaded
+    7)	On second TAB use "Copy all as HAR" on "Network" and save all the content into *.har file
+    8)	Run NV analyzing and save PL file as *csv (Open *.pcap file with Wireshark go to : File - Export Packet Dissections - As CSV)
+    9)	Save NV rule's as *.csv in following format
+        1,www.ok.ru
+        1,static3.smi2.net
+        2,static7.smi2.net
+        3,clickiocdn.com
+    10)	Open created result file with Excel and analyze the result according rul'e defenition, result file contains the following columns:
+    ['Status', 'ParsedDomain', 'URL', 'Is_In_PL', 'Is_3d_Party', 'Host', 'InReport', 'Referer', 'ReportedValue', 'CountedHost', 'ReportedHost', 'Parsed_URL_Path', 'Size']
+    '''
+    print usage
+    CONTINUE('Are you ready to start analyzing process?')
+    har_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.har')==True],'Choose *har file:')
+    report_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.txt')==True],'Choose rule result file:')
+    pl_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.csv')==True],'Choose PL file:')
+    third_parties_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.txt')==True],'Choose 3rd parties file:')
+    td_parties=open(third_parties_file,'r').read().lower()
+    result=GET_ALL_DOMAINS(har_file)
+    hosts=[i['Host'] for i in result]
+    referers=[i['Referer'] for i in result]
+    parsed_domains=[i['ParsedDomain'] for i in result]
+    data=open(report_file,'r').read()
+    data_lines=open(report_file,'r').readlines()
+    data_lines=[d.split(',') for d in data_lines]
+    domains=[item['ParsedDomain'] for item in result]
+    stat=GET_LIST_STAT(domains)
+    packet_list=open(pl_file,'r').read().lower()
+    updated_result=[]
+    for r in result:
+        #if r['Host']!=None:
+        reported_value=None
+        reported_host=None
+        in_report=False
+        for d in data_lines:
+            if r['Host'] == d[1].strip():
+                reported_value=d[0]
+                reported_host=d[1].strip()
+                in_report=True
+                break
+        in_pl=False
+        parsed = urlparse(r['URL'])
+        url_path=parsed.path.lower()
+        if url_path in packet_list:
+            in_pl=True
+        r.update({'Parsed_URL_Path':url_path})
+        r.update({'Is_In_PL':in_pl})
+        r.update({'ReportedValue':reported_value})
+        r.update({'ReportedHost':reported_host})
+        r.update({'InReport':in_report})
+        r.update({'CountedHost':hosts.count(r['Host'])})
+        if str(r['Host']).lower() in td_parties:
+            r.update({'Is_3d_Party':True})
+        if str(r['Host']).lower() not in td_parties:
+            r.update({'Is_3d_Party':False})
+        updated_result.append(r)
+        print r
+    result_file=har_file.replace('.har','.csv')
+    WRITE_DICTS_TO_CSV(result_file,updated_result)
+    SPEC_PRINT(['Your result file is ready!!!','File name: '+result_file])
 
 
 
-# ### "Compress Components" rule ###
-# # 1)	Use Chrome
-# # 2)	Close all tabs except NV
-# # 3)	Open a new TAB with "Developers Tools" opened
-# # 4)	Start Emulation on NV tab
-# # 5)	Browse to some site on second TAB
-# # 6)	Stop NV once site is loaded
-# # 7)	On second TAB use "Copy all as HAR" on "Network" and save all the content into *.har file
-# # 8)	Run NV analyzing and save PL file as *csv (Open *.pcap file with Wireshark go to : File - Export Packet Dissections - As CSV)
-# # 9)	Save NV rule's as *.csv in report.txt file
-# # 10)	Open created result file with Excel and analyze the result according rule's defenition, result file contains the following columns:
-# # ['Content-Length', 'Code', 'Accept-Encoding', 'Response_Headers', 'Content-Encoding', 'URL', 'Response_Body_Size', 'Is_In_PL', 'Is_in_3d_Party', 'Content-Type', 'Parsed_URL_Path', 'Is_In_Rule']
-# # Note: see Issue 20340, you can see current implementation there
-# har_file='ynet.har'
-# pl_file='ynetCap.csv'
-# report_file='report.txt'
-# td_parties=open('3rdPartyList.txt','r').read().lower()
-# rules_result=open(report_file,'r').read().lower()
-# packet_list=open(pl_file,'r').read().lower()
-# result_list=[]
-# result=CHECK_COMPRESS_RULE(har_file)
-# for d in result:
-#     in_rule=False
-#     if d['URL'].lower() in rules_result:
-#         in_rule=True
-#     d.update({'Is_In_Rule':in_rule})
-#     in_td_parties=False
-#     try:
-#         if get_tld(d['URL']).lower() in td_parties:
-#             in_td_parties=True
-#     except Exception, e:
-#         in_td_parties=str(e)
-#     d.update({'Is_in_3d_Party':in_td_parties})
-#     in_pl=False
-#     parsed = urlparse(d['URL'])
-#     url_path=parsed.path.lower()
-#     if url_path in packet_list:
-#         in_pl=True
-#     d.update({'Parsed_URL_Path':url_path})
-#     d.update({'Is_In_PL':in_pl})
-#     print d.keys()
-#     result_list.append(d)
-# WRITE_DICTS_TO_CSV(har_file.replace('.har','.csv'),result_list)
+
+
+
+if test=='6.1-HTTP Server for "Avoid 4xx and 5xx status codes" rule testing':
+    usage='''### USAGE ###
+    1) Make sure that PORT (my suggestion 8080) you would like to use for your server is available:
+        * No app is using it - check with netstat
+        * PORT is in ASW server security group
+    2) Verify that you don't have connectivity issues by browsing to:
+        http://<AWS_IP>:<SERVER_PORT>/return_code=200/200.jpg
+        from your client machine,you supposed to:
+            * Receive image
+            * Proper output on server side script
+
+    '''
+    print usage
+    CONTINUE('Are you ready to start analyzing process?')
+    import HTTP_Server_Status_Codes
+
+
+
+
+
+
+
+
+#
+# from Mi_Functions import *
+# from TrafficTypes import *
+#
+# legal_rfc_codes=[100, 101, 200, 201, 202, 203, 204, 205, 206, 300, 301, 302, 303, 304, 305, 306, 307, 400, 401, 402, 403, 404, 405, 406, 407, 408, 409, 410, 411, 412, 413, 414, 415, 416, 417, 500, 501, 502, 503, 504, 505]
+# codes_to_check=(i for i in range(0,1001)) #Generator
+# codes_to_check=[100, 101, 102, 200, 201, 202, 203, 204, 205, 206, 207, 208, 226, 300, 301, 302, 303, 304, 305, 306, 307, 308, 404, 400, 401, 402, 403, 404, 405, 406, 407, 408, 409, 410, 411, 412, 413, 414, 415, 416, 417, 418, 421, 422, 423, 424, 426, 428, 429, 431, 451, 500, 501, 502, 503, 504, 505, 506, 507, 508, 510, 511, 103, 420, 420, 450, 498, 499, 499, 509, 530, 440, 449, 451, 444, 495, 496, 497, 499, 520, 521, 522, 523, 524, 525, 526]
+# urls=[]
+# for i in codes_to_check:
+#     urls.append('http://52.20.143.142:8080/return_code='+str(i)+'/'+str(i)+'.jpg')
 #
 #
-#
-
-
-
-
-
-
-
-
-
-
-# # ### "Fewer domains" rule ###
-# # 1)	Use Chrome
-# # 2)	Close all tabs except NV
-# # 3)	Open a new TAB with "Developers Tools" opened
-# # 4)	Start Emulation on NV tab
-# # 5)	Browse to some site on second TAB
-# # 6)	Stop NV once site is loaded
-# # 7)	On second TAB use "Copy all as HAR" on "Network" and save all the content into *.har file
-# # 8)	Run NV analyzing and save PL file as *csv (Open *.pcap file with Wireshark go to : File - Export Packet Dissections - As CSV)
-# # 9)	Save NV rule's as *.csv in following format
-# # 1,www.ok.ru
-# # 1,static3.smi2.net
-# # 2,static7.smi2.net
-# # 3,clickiocdn.com
-# # 10)	Open created result file with Excel and analyze the result according rul'e defenition, result file contains the following columns:
-# # ['Status', 'ParsedDomain', 'URL', 'Is_In_PL', 'Is_3d_Party', 'Host', 'InReport', 'Referer', 'ReportedValue', 'CountedHost', 'ReportedHost', 'Parsed_URL_Path', 'Size']
-# har_file='Fishki.har'
-# third_parties_file='3rdPartyList.txt'
-# report_file='report.txt'
-# pl_file='ynetCap.csv'
-# td_parties=open(third_parties_file,'r').read().lower()
-# result=GET_ALL_DOMAINS(har_file)
-# hosts=[i['Host'] for i in result]
-# referers=[i['Referer'] for i in result]
-# parsed_domains=[i['ParsedDomain'] for i in result]
-# data=open(report_file,'r').read()
-# data_lines=open(report_file,'r').readlines()
-# data_lines=[d.split(',') for d in data_lines]
-# domains=[item['ParsedDomain'] for item in result]
-# stat=GET_LIST_STAT(domains)
-# packet_list=open(pl_file,'r').read().lower()
-# updated_result=[]
-# for r in result:
-#     #if r['Host']!=None:
-#     reported_value=None
-#     reported_host=None
-#     in_report=False
-#     for d in data_lines:
-#         if r['Host'] == d[1].strip():
-#             reported_value=d[0]
-#             reported_host=d[1].strip()
-#             in_report=True
-#             break
-#     in_pl=False
-#     parsed = urlparse(r['URL'])
-#     url_path=parsed.path.lower()
-#     if url_path in packet_list:
-#         in_pl=True
-#     r.update({'Parsed_URL_Path':url_path})
-#     r.update({'Is_In_PL':in_pl})
-#     r.update({'ReportedValue':reported_value})
-#     r.update({'ReportedHost':reported_host})
-#     r.update({'InReport':in_report})
-#     r.update({'CountedHost':hosts.count(r['Host'])})
-#     if str(r['Host']).lower() in td_parties:
-#         r.update({'Is_3d_Party':True})
-#     if str(r['Host']).lower() not in td_parties:
-#         r.update({'Is_3d_Party':False})
-#     updated_result.append(r)
-#     print r.keys()
-# WRITE_DICTS_TO_CSV(har_file.replace('.har','.csv'),updated_result)
-
-
-
-
-
-
-
-
-
-
-
-
-# # ### "Try to reduce the size of the cookies" rule ###
-# # # Rule defenition by Shlomo
-# # # In case when cookie is in request and not 3d party, violation is true
-# # # In case when cookie is in Response and its size is bigger than 100 violation is true
-# # 1)	Use Chrome
-# # 2)	Close all tabs except NV
-# # 3)	Open a new TAB with "Developers Tools" opened
-# # 4)	Start Emulation on NV tab
-# # 5)	Browse to some site on second TAB
-# # 6)	Stop NV once site is loaded
-# # 7)	On second TAB use "Copy all as HAR" on "Network" and save all the content into *.har file
-# # 8)	Run NV analyzing and save PL file as *csv (Open *.pcap file with Wireshark go to : File - Export Packet Dissections - As CSV)
-# # 9)	Save NV rule's as *.csv in report.txt file
-# # 10)	Open created result file with Excel and analyze the result according rul'e defenition, result file contains the following columns:
-# # ['Request_Cookie_Length', 'ParsedDomain', 'Is_In_Rule', 'Request_Cookie', 'Response_Cookie_Length', 'URL', 'Is_In_PL', 'Host', 'Referer', 'Is_in_3d_Party', 'Response_Cookie', 'Parsed_URL_Path']
-# har_file='rambler.har'
-# td_parties=open('3rdPartyList.txt','r').read().lower()
-# rules_result=open('report.txt','r').read().lower()
-# packet_list=open('RamblerCap.csv','r').read().lower()
-# packet_list_lines=open('RamblerCap.csv','r').readlines()
-# updated_result=[]
-# result=GET_ALL_COOKIES(har_file)
-# for r in result:
-#     in_rule=False
-#     if str(r['URL']).lower() in rules_result:
-#         in_rule=True
-#     r.update({'Is_In_Rule':in_rule})
-#     in_td_parties=False
-#     if str(r['ParsedDomain'].split('.')[0]).lower() in td_parties:
-#         in_td_parties=True
-#     r.update({'Is_in_3d_Party':in_td_parties})
-#     in_pl=False
-#     parsed = urlparse(r['URL'])
-#     url_path=parsed.path.lower()
-#     if url_path in packet_list:
-#         in_pl=True
-#     r.update({'Parsed_URL_Path':url_path})
-#     r.update({'Is_In_PL':in_pl})
-#     print r.keys()
-#     updated_result.append(r)
-# WRITE_DICTS_TO_CSV(har_file.replace('.har','.csv'),updated_result)
-
-
-
-
-
-
-
+# for url in urls:
+#     print HTTP_GET_SITE(url,1)
 
 
 
