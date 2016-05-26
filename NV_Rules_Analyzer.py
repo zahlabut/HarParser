@@ -455,12 +455,12 @@ if test=='6.1-HTTP Server for "Avoid 4xx and 5xx status codes" rule testing':
         * PORT is in ASW server security group
     2) Verify that you don't have connectivity issues by browsing to:
        http://<AWS_IP>:<SERVER_PORT>/return_code=200/200.jpg from your client side (Wget or real Browser),you supposed to:
-        * Receive image
-        * Proper output on server side script
-
+        * HTTP response 200 OK and image
+        * Proper output on server side script, for example:
+            52.3.119.102 - - [26/May/2016 13:38:08] "GET /return_code=200/200.jpg HTTP/1.1" 200 -
     '''
     print usage
-    CONTINUE('Are you ready to start analyzing process?')
+    CONTINUE('Are you ready to continue?')
     import HTTP_Server_Status_Codes
 
 
