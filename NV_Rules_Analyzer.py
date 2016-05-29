@@ -190,7 +190,10 @@ RULES=[
     '4-Try to reduce the size of the cookies',
     '5-Fewer domains',
     '6.1-HTTP Server for "Avoid 4xx and 5xx status codes" rule testing',
-    '6.2-HTTP Client for "Avoid 4xx and 5xx status codes" rule testing'
+    '6.2-HTTP Client for "Avoid 4xx and 5xx status codes" rule testing',
+    '8-Minimize number of third-party resources',
+    '9-Add long term headers expiration dates',
+    '10-Use a Content Delivery Network (CDN)'
     ]
 test=CHOOSE_OPTION_FROM_LIST_1(RULES, 'Choose Rule you would like to test:')
 dir_files=[fil for fil in os.listdir('.') if fil.endswith('.py')==False and fil.startswith('.')==False]
@@ -231,7 +234,7 @@ if test=='2-Reduce the size of your images':
     6)	Stop NV once site is loaded
     7)	On second TAB use "Copy all as HAR" on "Network" and save all the content into *.har file
     8)	Run NV analyzing and save PL file as *csv (Open *.pcap file with Wireshark go to : File - Export Packet Dissections - As CSV)
-    9)	Save NV rule's as *.csv in report.txt file
+    9)	Save NV rule's report as *.csv in report.txt file
     10)	Open created result file with Excel and analyze the result according rul'e defenition, result file contains the following columns:
     ['Status', 'ImageSize', 'Response_Headers', 'Is_in_3d_Party', 'URL', 'Content-Type', 'Is_In_PL', 'Parsed_URL_Path', 'Is_In_Rule']'''
     print usage
@@ -286,7 +289,7 @@ if test=='3-Compress Components':
     6)	Stop NV once site is loaded
     7)	On second TAB use "Copy all as HAR" on "Network" and save all the content into *.har file
     8)	Run NV analyzing and save PL file as *csv (Open *.pcap file with Wireshark go to : File - Export Packet Dissections - As CSV)
-    9)	Save NV rule's as *.csv in report.txt file
+    9)	Save NV rule's report as *.csv in report.txt file
     10)	Open created result file with Excel and analyze the result according rule's defenition, result file contains the following columns:
     ['Content-Length', 'Code', 'Accept-Encoding', 'Response_Headers', 'Content-Encoding', 'URL', 'Response_Body_Size', 'Is_In_PL', 'Is_in_3d_Party', 'Content-Type', 'Parsed_URL_Path', 'Is_In_Rule']
     Note: see Issue 20340, you can see current implementation there'''
@@ -337,7 +340,7 @@ if test=='4-Try to reduce the size of the cookies':
     6)	Stop NV once site is loaded
     7)	On second TAB use "Copy all as HAR" on "Network" and save all the content into *.har file
     8)	Run NV analyzing and save PL file as *csv (Open *.pcap file with Wireshark go to : File - Export Packet Dissections - As CSV)
-    9)	Save NV rule's as *.csv in report.txt file
+    9)	Save NV rule's report as *.csv in report.txt file
     10)	Open created result file with Excel and analyze the result according rul'e defenition, result file contains the following columns:
     ['Request_Cookie_Length', 'ParsedDomain', 'Is_In_Rule', 'Request_Cookie', 'Response_Cookie_Length', 'URL', 'Is_In_PL', 'Host', 'Referer', 'Is_in_3d_Party', 'Response_Cookie', 'Parsed_URL_Path']
     '''
@@ -386,7 +389,7 @@ if test=='5-Fewer domains':
     6)	Stop NV once site is loaded
     7)	On second TAB use "Copy all as HAR" on "Network" and save all the content into *.har file
     8)	Run NV analyzing and save PL file as *csv (Open *.pcap file with Wireshark go to : File - Export Packet Dissections - As CSV)
-    9)	Save NV rule's as *.csv in following format
+    9)	Save NV rule's report as *.csv in report.txt file in following format
         1,www.ok.ru
         1,static3.smi2.net
         2,static7.smi2.net
@@ -500,207 +503,239 @@ if test=='6.2-HTTP Client for "Avoid 4xx and 5xx status codes" rule testing':
 
 
 
-# ### Test "Minimize number of third-party resources"
-# #1)Copy rule's reult into report as isYou need to copy the urls into report.txt and to number it, like that:
-# #2) Take PL and export all to csv
-# # 1,static3.smi2.net
-# # 2,static7.smi2.net
-#
-# har_file='fishki.har'
-# td_parties=open('3rdPartyList.txt','r').read().lower()
-# rules_result=open('report.txt','r').read().lower()
-# result=GET_ALL_DOMAINS(har_file)
-# packet_list=open('FishkCap.csv','r').read().lower()
-# packet_list_lines=open('FishkCap.csv','r').readlines()
-# updated_result=[]
-#
-#
-# for r in result:
-#     in_rule=False
-#     if str(r['URL']).lower() in rules_result:
-#         in_rule=True
-#     r.update({'Is_In_Rule':in_rule})
-#
-#
-#     in_td_parties=False
-#     if str(r['ParsedDomain'].split('.')[0]).lower() in td_parties:
-#         in_td_parties=True
-#     r.update({'Is_in_3d_Party':in_td_parties})
-#
-#
-#     in_pl=False
-#     parsed = urlparse(r['URL'])
-#     url_path=parsed.path.lower()
-#     if url_path in packet_list:
-#         in_pl=True
-#     r.update({'Parsed_URL_Path':url_path})
-#     r.update({'Is_In_PL':in_pl})
-#
-#     print r.keys()
-#     print r['Is_in_3d_Party']
-#     updated_result.append(r)
-# WRITE_DICTS_TO_CSV(har_file.replace('.har','.csv'),updated_result)
 
 
+if test=='8-Minimize number of third-party resources':
+    usage='''### USAGE ###
+    1)	Use Chrome
+    2)	Close all tabs except NV
+    3)	Open a new TAB with "Developers Tools" opened
+    4)	Start Emulation on NV tab
+    5)	Browse to some site on second TAB
+    6)	Stop NV once site is loaded
+    7)	On second TAB use "Copy all as HAR" on "Network" and save all the content into *.har file
+    8)	Run NV analyzing and save PL file as *csv (Open *.pcap file with Wireshark go to : File - Export Packet Dissections - As CSV)
+    9)	Save NV rule's report as *.csv in report.txt file
+    10)	Open created result file with Excel and analyze the result according rul'e defenition, result file contains the following columns:
+    ['Status', 'ParsedDomain', 'Is_In_Rule', 'URL', 'Is_In_PL', 'Host', 'Referer', 'Is_in_3d_Party', 'Parsed_URL_Path', 'Size']
+    '''
+    print usage
+    CONTINUE('Are you ready to start analyzing process?')
+    har_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.har')==True],'Choose *har file:')
+    report_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.txt')==True],'Choose rule result file:')
+    pl_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.csv')==True],'Choose PL file:')
+    third_parties_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.txt')==True],'Choose 3rd parties file:')
+    td_parties=open(third_parties_file,'r').read().lower()
+    rules_result=open(report_file,'r').read().lower()
+    result=GET_ALL_DOMAINS(har_file)
+    packet_list=open(pl_file,'r').read().lower()
+    packet_list_lines=open(pl_file,'r').readlines()
+    updated_result=[]
 
-#
-# ### Test cache rule ###
-# # Test steps
-# #1) Usee Firefox only
-# #2) Clean Firefox Cache
-# #3) Browse to some site while emulation
-# #4) Save HAR content to *.har file
-# #5) Save Firefox about:cache content to cache_from_firefox.txt
-# #6) Save cache rule result into report.txt
-# #7) Save PL as CSV into *CAP.csv
-#
-# # Read cache from CAHCE file as dictionaries into list
-# firefox_cache_file='FishkiFirefoxCache.txt'
-# firefox_cache=open(firefox_cache_file,'r').readlines()
-# firefox_cache=[line.strip() for line in firefox_cache if line.count('\t')>3]
-# headers=firefox_cache[0].split('\t')
-# dict_list=[]
-# for line in firefox_cache[1:]:
-#     dic={}
-#     line=line.split('\t')
-#     for item in line:
-#         dic[headers[line.index(item)]]=item
-#     dict_list.append(dic)
-# # Update all dicts with expiration in days from now
-# now=time.strftime("%Y-%m-%d %H:%M:%S")
-# now=datetime.strptime(now,"%Y-%m-%d %H:%M:%S")
-# updated_dict_list=[]
-# for d in dict_list:
-#     if 'No expiration time' not in d['Expires ']:
-#         line_date=datetime.strptime(d['Expires '],"%Y-%m-%d %H:%M:%S")
-#         d['ExpiresInDays']=str(line_date-now)
-#     else:
-#         d['ExpiresInDays']=None
-#     updated_dict_list.append(d)
-# # Pass over all cached files in loop nd add all relevan data from PL, Report and HAR file
-# har_file='Fishki.har'
-# pl_file='FishkiCap.csv'
-# firefox_cache_file='FishkiFirefoxCache.txt'
-# report_file='report.txt'
-# td_parties=open('3rdPartyList.txt','r').read().lower()
-# rules_result=open(report_file,'r').read().lower()
-# packet_list=open(pl_file,'r').read().lower()
-# result_list=[]
-# har_file_result=GET_ALL_RESPONSE_HEADERS(har_file)
-#
-#
-# for d in updated_dict_list:
-#     print d['Key ']
-#     in_rule=False
-#     if d['Key '].lower() in rules_result:
-#         in_rule=True
-#     d.update({'Is_In_Rule':in_rule})
-#
-#     in_td_parties=False
-#     try:
-#         if get_tld(d['Key ']).lower() in td_parties:
-#             in_td_parties=True
-#     except:
-#         pass
-#     d.update({'Is_in_3d_Party':in_td_parties})
-#
-#     in_pl=False
-#     parsed = urlparse(d['Key '])
-#     url_path=parsed.path.lower()
-#     if url_path in packet_list:
-#         in_pl=True
-#     d.update({'Parsed_URL_Path':url_path})
-#     d.update({'Is_In_PL':in_pl})
-#
-#     for item in har_file_result:
-#         #print '*'*100
-#         #print d['Key ']
-#         #print item['URL']
-#         cache_headers_string= ''
-#         if d['Key '].lower().strip()==item['URL'].lower().strip():
-#             print d['Key ']
-#             print item['URL']
-#             d.update({'ResponseHeaders':item['Response_Headers']})
-#             d.update({'Status_Code':item['Status']})
-#             for k in item['Cache_Headers'].keys():
-#                 cache_headers_string+= k + ':' + item['Cache_Headers'][k] + '\r\n'
-#             d.update({'Cache_Headers_Values':cache_headers_string})
-#             d.update({'Cache_Headers_Keys':item['Cache_Headers'].keys()})
-#             print d.keys()
-#     result_list.append(d)
-# WRITE_DICTS_TO_CSV(har_file.replace('.har','.csv'),result_list)
+    for r in result:
+
+        in_rule=False
+        if str(r['URL']).strip().lower() in rules_result.lower():
+            in_rule=True
+        r.update({'Is_In_Rule':in_rule})
+
+
+        in_td_parties=False
+        if str(r['ParsedDomain'].split('.')[0]).lower() in td_parties:
+            in_td_parties=True
+        r.update({'Is_in_3d_Party':in_td_parties})
+
+
+        in_pl=False
+        parsed = urlparse(r['URL'])
+        url_path=parsed.path.lower()
+        if url_path in packet_list:
+            in_pl=True
+        r.update({'Parsed_URL_Path':url_path})
+        r.update({'Is_In_PL':in_pl})
+
+        print r
+
+        updated_result.append(r)
+
+    result_file=har_file.replace('.har','.csv')
+    WRITE_DICTS_TO_CSV(result_file,updated_result)
+    SPEC_PRINT(['Your result file is ready!!!','File name: '+result_file])
 
 
 
 
+if test=='9-Add long term headers expiration dates':
+    usage='''### USAGE ###
+    1)	Use Firefox
+    2)  Clean firefox cache
+    3)	Close all tabs except NV
+    4)	Open a new TAB with "Developers Tools" opened
+    5)	Start Emulation on NV tab
+    6)	Browse to some site on second TAB
+    7)	Stop NV once site is loaded
+    8)	On second TAB use "Copy all as HAR" on "Network" and save all the content into *.har file
+    9)	Run NV analyzing and save PL file as *csv (Open *.pcap file with Wireshark go to : File - Export Packet Dissections - As CSV)
+    10)	Save NV rule's report as *.csv in report.txt file
+    11) Type "about:cache" in Firefox, click on "List Cache Entries" and save the result into *.txt file
+    12)	Open created result file with Excel and analyze the result according rule's defenition, result file contains the following columns:
+    ['Key ', 'Is_In_Rule', 'Cache_Headers_Values', 'Status_Code', 'Expires ', 'Is_In_PL', 'Data size ', 'Cache_Headers_Keys', 'Is_in_3d_Party', 'ExpiresInDays', 'ResponseHeaders', 'Fetch count ', 'Parsed_URL_Path', 'Last Modifed ']
+    '''
+    print usage
+    CONTINUE('Are you ready to start analyzing process?')
+    firefox_cache_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.txt')==True],'Choose Firefox cahed files ("about:cache") result file:')
+    har_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.har')==True],'Choose *har file:')
+    report_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.txt')==True],'Choose rule result file:')
+    pl_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.csv')==True],'Choose PL file:')
+    third_parties_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.txt')==True],'Choose 3rd parties file:')
 
-# ### Test CDN rule ###
-# # Test steps
-# # Run on LINUX as script is using "host" tool
-# #1) Browse to some site while emulation
-# #2) Save HAR content to *.har file
-# #3) Save PL as CSV into *CAP.csv
-# #4) Use http://www.cdnplanet.com/tools/cdnfinder/ and type your tested site in "Full site lookup"
-# #5) Save result table from previous step in cdnplanet.csv (File. verify that you can open it with Excel)
-#
-# har_file='Fishki.har'
-# pl_file='FishkiCap.csv'
-# report_file='report.txt'
-# cdn_planet_file='cdnplanet.csv'
-# cdn_planet_content=open(cdn_planet_file,'r').read().lower()
-# cdn_planet_content_lines=open(cdn_planet_file,'r').readlines()
-# td_parties=open('3rdPartyList.txt','r').read().lower()
-# known_cdn_file='KnownCdnResources.java'
-# known_cdns=open(known_cdn_file,'r').read().lower()
-# rules_result=open(report_file,'r').read().lower()
-# packet_list=open(pl_file,'r').read().lower()
-# result_list=[]
-# har_file_result=GET_ALL_DOMAINS(har_file)
-#
-#
-# for d in har_file_result:
-#
-#     in_cdnplanet=None
-#     if d['Host'].lower() in cdn_planet_content:
-#         for line in cdn_planet_content_lines:
-#             if d['Host'].lower() in str(line).lower():
-#                 in_cdnplanet=line.split('\t')[-1].strip()
-#                 break
-#     d.update({'Host_In_CdnPlanet':in_cdnplanet})
-#
-#     d.update({'LinuxHostOutput':IS_CDN(d['Host'])})
-#
-#     in_cdns=False
-#     if d['Host'].lower() in known_cdns:
-#         in_cdns=True
-#     d.update({'Host_In_Known_CDNs':in_cdns})
-#
-#
-#     in_rule=False
-#     if d['URL'].lower() in rules_result:
-#         in_rule=True
-#     d.update({'Is_In_Rule':in_rule})
-#
-#     in_td_parties=False
-#     try:
-#         if get_tld(d['URL']).lower() in td_parties:
-#             in_td_parties=True
-#     except Exception, e:
-#         in_td_parties=str(e)
-#     d.update({'Is_in_3d_Party':in_td_parties})
-#
-#     in_pl=False
-#     parsed = urlparse(d['URL'])
-#     url_path=parsed.path.lower()
-#     if url_path in packet_list:
-#         in_pl=True
-#     d.update({'Parsed_URL_Path':url_path})
-#     d.update({'Is_In_PL':in_pl})
-#
-#     print d
-#     result_list.append(d)
-#
-# WRITE_DICTS_TO_CSV(har_file.replace('.har','.csv'),result_list)
+
+    # Read cache from CAHCE file as dictionaries into list
+    firefox_cache=open(firefox_cache_file,'r').readlines()
+    firefox_cache=[line.strip() for line in firefox_cache if line.count('\t')>3]
+    headers=firefox_cache[0].split('\t')
+    dict_list=[]
+    for line in firefox_cache[1:]:
+        dic={}
+        line=line.split('\t')
+        for item in line:
+            dic[headers[line.index(item)]]=item
+        dict_list.append(dic)
+    # Update all dicts with expiration in days from now
+    now=time.strftime("%Y-%m-%d %H:%M:%S")
+    now=datetime.strptime(now,"%Y-%m-%d %H:%M:%S")
+    updated_dict_list=[]
+    for d in dict_list:
+        if 'No expiration time' not in d['Expires ']:
+            line_date=datetime.strptime(d['Expires '],"%Y-%m-%d %H:%M:%S")
+            d['ExpiresInDays']=str(line_date-now)
+        else:
+            d['ExpiresInDays']=None
+        updated_dict_list.append(d)
+    # Pass over all cached files in loop nd add all relevan data from PL, Report and HAR file
+    td_parties=open(third_parties_file,'r').read().lower()
+    rules_result=open(report_file,'r').read().lower()
+    packet_list=open(pl_file,'r').read().lower()
+    result_list=[]
+    har_file_result=GET_ALL_RESPONSE_HEADERS(har_file)
+
+    for d in updated_dict_list:
+        in_rule=False
+        if d['Key '].lower() in rules_result:
+            in_rule=True
+        d.update({'Is_In_Rule':in_rule})
+
+        in_td_parties=False
+        try:
+            if get_tld(d['Key ']).lower() in td_parties:
+                in_td_parties=True
+        except:
+            pass
+        d.update({'Is_in_3d_Party':in_td_parties})
+
+        in_pl=False
+        parsed = urlparse(d['Key '])
+        url_path=parsed.path.lower()
+        if url_path in packet_list:
+            in_pl=True
+        d.update({'Parsed_URL_Path':url_path})
+        d.update({'Is_In_PL':in_pl})
+
+        for item in har_file_result:
+            cache_headers_string= ''
+            if d['Key '].lower().strip()==item['URL'].lower().strip():
+                d.update({'ResponseHeaders':item['Response_Headers']})
+                d.update({'Status_Code':item['Status']})
+                for k in item['Cache_Headers'].keys():
+                    cache_headers_string+= k + ':' + item['Cache_Headers'][k] + '\r\n'
+                d.update({'Cache_Headers_Values':cache_headers_string})
+                d.update({'Cache_Headers_Keys':item['Cache_Headers'].keys()})
+                print d
+        result_list.append(d)
+    result_file=har_file.replace('.har','.csv')
+    WRITE_DICTS_TO_CSV(result_file,result_list)
+    SPEC_PRINT(['Your result file is ready!!!','File name: '+result_file])
+
+
+
+
+if test=='10-Use a Content Delivery Network (CDN)':
+    usage='''### USAGE ###
+    Run on LINUX as script is using "host" tool
+    1)	Use Chrome
+    2)	Close all tabs except NV
+    3)	Open a new TAB with "Developers Tools" opened
+    4)	Start Emulation on NV tab
+    5)	Browse to some site on second TAB
+    6)	Stop NV once site is loaded
+    7)	On second TAB use "Copy all as HAR" on "Network" and save all the content into *.har file
+    8)	Run NV analyzing and save PL file as *csv (Open *.pcap file with Wireshark go to : File - Export Packet Dissections - As CSV)
+    9)	Save NV rule's report as *.csv in report.txt file
+    10) Use http://www.cdnplanet.com/tools/cdnfinder/ and type your tested site in "Full site lookup"
+    11) Save result table from previous step in cdnplanet.csv (File. verify that you can open it with Excel)
+    12)	Open created result file with Excel and analyze the result according rul'e defenition, result file contains the following columns:
+    ['Status', 'LinuxHostOutput', 'ParsedDomain', 'Host_In_Known_CDNs', 'Host_In_CdnPlanet', 'URL', 'Is_In_Rule', 'Is_In_PL', 'Host', 'Referer', 'Is_in_3d_Party', 'Parsed_URL_Path', 'Size']
+    '''
+    print usage
+    CONTINUE('Are you ready to start analyzing process?')
+    har_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.har')==True],'Choose *har file:')
+    report_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.txt')==True],'Choose rule result file:')
+    pl_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.csv')==True],'Choose PL file:')
+    third_parties_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.txt')==True],'Choose 3rd parties file:')
+    cdn_planet_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.csv')==True],'Choose CDN Planet result *.csv file:')
+    cdn_planet_content=open(cdn_planet_file,'r').read().lower()
+    cdn_planet_content_lines=open(cdn_planet_file,'r').readlines()
+    td_parties=open(third_parties_file,'r').read().lower()
+    known_cdn_file='KnownCdnResources.java'
+    known_cdns=open(known_cdn_file,'r').read().lower()
+    rules_result=open(report_file,'r').read().lower()
+    packet_list=open(pl_file,'r').read().lower()
+    result_list=[]
+    har_file_result=GET_ALL_DOMAINS(har_file)
+
+    for d in har_file_result:
+        in_cdnplanet=None
+        if d['Host']!=None and d['Host'].lower() in cdn_planet_content:
+            for line in cdn_planet_content_lines:
+                if d['Host'].lower() in str(line).lower():
+                    in_cdnplanet=line.split('\t')[-1].strip()
+                    break
+        d.update({'Host_In_CdnPlanet':in_cdnplanet})
+
+        d.update({'LinuxHostOutput':IS_CDN(d['Host'])})
+
+        in_cdns=False
+        if d['Host']!=None and d['Host'].lower() in known_cdns:
+            in_cdns=True
+        d.update({'Host_In_Known_CDNs':in_cdns})
+
+
+        in_rule=False
+        if d['URL'].lower() in rules_result:
+            in_rule=True
+        d.update({'Is_In_Rule':in_rule})
+
+        in_td_parties=False
+        try:
+            if get_tld(d['URL']).lower() in td_parties:
+                in_td_parties=True
+        except Exception, e:
+            in_td_parties=str(e)
+        d.update({'Is_in_3d_Party':in_td_parties})
+
+        in_pl=False
+        parsed = urlparse(d['URL'])
+        url_path=parsed.path.lower()
+        if url_path in packet_list:
+            in_pl=True
+        d.update({'Parsed_URL_Path':url_path})
+        d.update({'Is_In_PL':in_pl})
+
+        print d
+        result_list.append(d)
+    result_file=har_file.replace('.har','.csv')
+    WRITE_DICTS_TO_CSV(result_file,result_list)
+    SPEC_PRINT(['Your result file is ready!!!','File name: '+result_file])
 
 
 
