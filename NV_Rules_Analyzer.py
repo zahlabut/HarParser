@@ -197,6 +197,7 @@ RULES=[
     ]
 test=CHOOSE_OPTION_FROM_LIST_1(RULES, 'Choose Rule you would like to test:')
 dir_files=[fil for fil in os.listdir('.') if fil.endswith('.py')==False and fil.startswith('.')==False]
+SPEC_PRINT(['Your files']+dir_files)
 
 if test=='Validate JPG reported total values':
     usage=''' ### USAGE ###
