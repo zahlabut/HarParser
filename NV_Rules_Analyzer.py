@@ -184,21 +184,21 @@ def GET_ALL_RESPONSE_HEADERS(har_file):
 TOOL_DESCRIPTION=['NV_Rules_Analyser_Tool','V 1.0','Designed by: Arkady','Goodbye world']
 SPEC_PRINT(TOOL_DESCRIPTION)
 RULES=[
-    '1-Validate JPG reported total values',
-    '2-Reduce the size of your images',
-    '3-Compress Components',
-    '4-Try to reduce the size of the cookies',
-    '5-Fewer domains',
-    '6.1-HTTP Server for "Avoid 4xx and 5xx status codes" rule testing',
-    '6.2-HTTP Client for "Avoid 4xx and 5xx status codes" rule testing',
-    '8-Minimize number of third-party resources',
-    '9-Add long term headers expiration dates',
-    '10-Use a Content Delivery Network (CDN)'
+    'Validate JPG reported total values',
+    'Reduce the size of your images',
+    'Compress Components',
+    'Try to reduce the size of the cookies',
+    'Fewer domains',
+    'HTTP Server for "Avoid 4xx and 5xx status codes" rule testing',
+    'HTTP Client for "Avoid 4xx and 5xx status codes" rule testing',
+    'Minimize number of third-party resources',
+    'Add long term headers expiration dates',
+    'Use a Content Delivery Network (CDN)'
     ]
 test=CHOOSE_OPTION_FROM_LIST_1(RULES, 'Choose Rule you would like to test:')
 dir_files=[fil for fil in os.listdir('.') if fil.endswith('.py')==False and fil.startswith('.')==False]
 
-if test=='1-Validate JPG reported total values':
+if test=='Validate JPG reported total values':
     usage=''' ### USAGE ###
     1) Browse to www.fishki.net (or any other site) while emulation, once completed run  NV Analytics
     2) Copy all violated JPG images under:
@@ -224,7 +224,7 @@ if test=='1-Validate JPG reported total values':
             print 'ACHTUNG ACHTUNG!!! --> '+str(e)+' '+l.strip()+" Won't be calculated! :( "
     SPEC_PRINT(['Total original in MB:'+str(original_size/1024),'Total optimized in MB:'+str(optimized_size/1024),'Reduce percentage:'+str(100-optimized_size*100/original_size)+'%'])
 
-if test=='2-Reduce the size of your images':
+if test=='Reduce the size of your images':
     usage='''### USAGE ###
     1)	Use Chrome
     2)	Close all tabs except NV
@@ -279,7 +279,7 @@ if test=='2-Reduce the size of your images':
 
 
 
-if test=='3-Compress Components':
+if test=='Compress Components':
     usage='''### USAGE ###
     1)	Use Chrome
     2)	Close all tabs except NV
@@ -330,7 +330,7 @@ if test=='3-Compress Components':
     SPEC_PRINT(['Your result file is ready!!!','File name: '+result_file])
 
 
-if test=='4-Try to reduce the size of the cookies':
+if test=='Try to reduce the size of the cookies':
     usage='''### USAGE ###
     1)	Use Chrome
     2)	Close all tabs except NV
@@ -379,7 +379,7 @@ if test=='4-Try to reduce the size of the cookies':
     SPEC_PRINT(['Your result file is ready!!!','File name: '+result_file])
 
 
-if test=='5-Fewer domains':
+if test=='Fewer domains':
     usage='''### USAGE ###
     1)	Use Chrome
     2)	Close all tabs except NV
@@ -452,7 +452,7 @@ if test=='5-Fewer domains':
 
 
 
-if test=='6.1-HTTP Server for "Avoid 4xx and 5xx status codes" rule testing':
+if test=='HTTP Server for "Avoid 4xx and 5xx status codes" rule testing':
     usage='''### USAGE ###
     1) Make sure that PORT (my suggestion 8080) you would like to use for your HTTP server is available:
         * No app is using it - check with netstat
@@ -465,7 +465,7 @@ if test=='6.1-HTTP Server for "Avoid 4xx and 5xx status codes" rule testing':
 
 
 
-if test=='6.2-HTTP Client for "Avoid 4xx and 5xx status codes" rule testing':
+if test=='HTTP Client for "Avoid 4xx and 5xx status codes" rule testing':
     usage='''### USAGE ###
     1) Verify that you don't have connectivity issues, by browsing to your server http://<AWS_IP>:<SERVER_PORT>/return_code=200/200.jpg
         from your client side (wget or real Browser),you supposed to:
@@ -505,7 +505,7 @@ if test=='6.2-HTTP Client for "Avoid 4xx and 5xx status codes" rule testing':
 
 
 
-if test=='8-Minimize number of third-party resources':
+if test=='Minimize number of third-party resources':
     usage='''### USAGE ###
     1)	Use Chrome
     2)	Close all tabs except NV
@@ -565,7 +565,7 @@ if test=='8-Minimize number of third-party resources':
 
 
 
-if test=='9-Add long term headers expiration dates':
+if test=='Add long term headers expiration dates':
     usage='''### USAGE ###
     1)	Use Firefox
     2)  Clean firefox cache
@@ -659,7 +659,7 @@ if test=='9-Add long term headers expiration dates':
 
 
 
-if test=='10-Use a Content Delivery Network (CDN)':
+if test=='Use a Content Delivery Network (CDN)':
     usage='''### USAGE ###
     Run on LINUX as script is using "host" tool
     1)	Use Chrome
