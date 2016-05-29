@@ -112,6 +112,7 @@ def CHOOSE_OPTION_FROM_LIST_1(lis, msg):
         list_object.append('Exit')
     try:
         if (len(list_object)<1):
+            print lis,msg
             print "Nothing to choose :( "
             print "Execution will stop!" 
             time.sleep(5)
