@@ -8,6 +8,10 @@ from datetime import datetime
 import subprocess
 from Mi_Functions import *
 from TrafficTypes import *
+from PIL import Image
+
+
+
 
 def IS_CDN(host):
     try:
@@ -179,7 +183,13 @@ def GET_ALL_RESPONSE_HEADERS(har_file):
         all_urls.append(dic)
     return all_urls
 
-
+def GET_IMAGE_RESOLUTION(img_path):
+    try:
+        im = Image.open(img_path)
+        width, height = im.size
+        return{'Width':width,'Height':height}
+    except Exception,e:
+        return {'Error':str(e)}
 
 TOOL_DESCRIPTION=['NV_Rules_Analyser_Tool','V 1.0','Designed by: Arkady','Goodbye world']
 SPEC_PRINT(TOOL_DESCRIPTION)
@@ -197,6 +207,9 @@ RULES=[
     ]
 test=CHOOSE_OPTION_FROM_LIST_1(RULES, 'Choose Rule you would like to test:')
 dir_files=[fil for fil in os.listdir('.') if fil.endswith('.py')==False and fil.startswith('.')==False]
+for root, dirnames, filenames in os.walk('.'):
+    break
+directories=[d for d in dirnames if d.startswith('.')==False]
 #SPEC_PRINT(['Your files']+dir_files)
 
 if test=='Validate JPG reported total values':
@@ -238,8 +251,9 @@ if test=='Reduce the size of your images':
     7)	On second TAB use "Copy all as HAR" on "Network" and save all the content into *.har file
     8)	Run NV analyzing and save PL file as *csv (Open *.pcap file with Wireshark go to : File - Export Packet Dissections - As CSV)
     9)	Save NV rule's report as *.csv in report.txt file ("Desktop" for Desktop mode and "iPhone" for mobile)
-    10)	Open created result file with Excel and analyze the result according rul'e defenition, result file contains the following columns:
-    ['Status', 'ImageSize', 'Response_Headers', 'Is_in_3d_Party', 'URL', 'Content-Type', 'Is_In_PL', 'Parsed_URL_Path', 'Is_In_Rule']
+    10) Save whole Web Page using "Save as" from chrome (use english characters in "save to" name) and save type "Webpage Complete" (HTML + all resources) in current directory
+    11)	Open created result file with Excel and analyze the result according rul'e defenition, result file contains the following columns:
+    ['Status', 'ImageSize', 'Response_Headers', 'Is_in_3d_Party', 'URL', 'Image_resolution', 'Content-Type', 'Is_In_PL', 'Parsed_URL_Path', 'Is_In_Rule']
     '''
     print usage
     CONTINUE('Are you ready to start analyzing process?')
@@ -247,6 +261,7 @@ if test=='Reduce the size of your images':
     report_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.txt')==True],'Choose rule result file:')
     pl_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.csv')==True],'Choose PL file:')
     third_parties_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.txt')==True],'Choose 3rd parties file:')
+    web_directory=CHOOSE_OPTION_FROM_LIST_1(directories,'Choose WebPage saved resources directory:')
     td_parties=open(third_parties_file,'r').read().lower()
     result=GET_ALL_RECEIVED_IMAGES(har_file)
     rules_result=open(report_file,'r').read()
@@ -271,16 +286,21 @@ if test=='Reduce the size of your images':
             in_pl=True
         r.update({'Parsed_URL_Path':url_path})
         r.update({'Is_In_PL':in_pl})
+
+
+        image_resolution=None
+        if 'image' in r['Content-Type'].lower():
+            image_name=r['Parsed_URL_Path'].split('/')[-1]
+            web_directory_path=os.path.join(os.path.abspath('.'),web_directory)
+            if image_name in os.listdir(web_directory_path):
+                image_resolution=GET_IMAGE_RESOLUTION(os.path.join(web_directory_path,image_name))
+        r.update({'Image_resolution':image_resolution})
+
         print r
         result_list.append(r)
     result_file=har_file.replace('.har','.csv')
     WRITE_DICTS_TO_CSV(result_file,result_list)
     SPEC_PRINT(['Your result file is ready!!!','File name: '+result_file])
-
-
-
-
-
 
 
 if test=='Compress Components':
