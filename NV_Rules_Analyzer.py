@@ -197,7 +197,7 @@ RULES=[
     ]
 test=CHOOSE_OPTION_FROM_LIST_1(RULES, 'Choose Rule you would like to test:')
 dir_files=[fil for fil in os.listdir('.') if fil.endswith('.py')==False and fil.startswith('.')==False]
-SPEC_PRINT(['Your files']+dir_files)
+#SPEC_PRINT(['Your files']+dir_files)
 
 if test=='Validate JPG reported total values':
     usage=''' ### USAGE ###
@@ -227,6 +227,8 @@ if test=='Validate JPG reported total values':
 
 if test=='Reduce the size of your images':
     usage='''### USAGE ###
+    Note: run this test for both modes: Desktop and Nobile
+    *** You can switch to mobile device using Chrome developer tools usung "Togle device mode" button
     1)	Use Chrome
     2)	Close all tabs except NV
     3)	Open a new TAB with "Developers Tools" opened
@@ -235,9 +237,10 @@ if test=='Reduce the size of your images':
     6)	Stop NV once site is loaded
     7)	On second TAB use "Copy all as HAR" on "Network" and save all the content into *.har file
     8)	Run NV analyzing and save PL file as *csv (Open *.pcap file with Wireshark go to : File - Export Packet Dissections - As CSV)
-    9)	Save NV rule's report as *.csv in report.txt file
+    9)	Save NV rule's report as *.csv in report.txt file ("Desktop" for Desktop mode and "iPhone" for mobile)
     10)	Open created result file with Excel and analyze the result according rul'e defenition, result file contains the following columns:
-    ['Status', 'ImageSize', 'Response_Headers', 'Is_in_3d_Party', 'URL', 'Content-Type', 'Is_In_PL', 'Parsed_URL_Path', 'Is_In_Rule']'''
+    ['Status', 'ImageSize', 'Response_Headers', 'Is_in_3d_Party', 'URL', 'Content-Type', 'Is_In_PL', 'Parsed_URL_Path', 'Is_In_Rule']
+    '''
     print usage
     CONTINUE('Are you ready to start analyzing process?')
     har_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.har')==True],'Choose *har file:')
