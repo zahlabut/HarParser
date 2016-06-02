@@ -62,11 +62,10 @@ def GET_ALL_RECEIVED_IMAGES(har_file):
                                                 'Status':item['response']['status']})
     return data_to_return_list
 
-
 def GET_ALL_RECEIVED_RESOURCES(har_file_with_content):
     md5s=[]
     data_to_return_list=[]
-    data=open(har_file,'r').read().decode('utf-8','ignore')
+    data=open(har_file_with_content,'r').read().decode('utf-8','ignore')
     data = json.loads(data)
     entries=data['log']['entries']
     for item in entries:
@@ -91,6 +90,65 @@ def GET_ALL_RECEIVED_RESOURCES(har_file_with_content):
         d['md5_appearance_number']=md5s.count(d['md5'])
         to_return.append(d)
     return to_return
+
+
+def GET_ALL_RECEIVED_OBJECTS(har_file_with_content, print_css='No'):
+    css_dir_lis=[]
+    data_to_return_list=[]
+    data=open(har_file_with_content,'r').read().decode('utf-8','ignore')
+    data = json.loads(data)
+    entries=data['log']['entries']
+    for item in entries:
+        host=None
+        referer=None
+        response_headers=''
+        for h in item['request']['headers']:
+            if 'host' in str(h).lower():
+                host=h['value']
+            if 'referer' in str(h).lower():
+                referer=h['value']
+        content_type=None
+        for header in item['response']['headers']:
+            response_headers+=header['name']+':'+header['value']+'\r\n'
+            if header['name']=='Content-Type' and len(header['value'].lower())>0:
+                content_type=header['value']
+                if 'css' in content_type.lower() and 'text' in item['response']['content'].keys():
+                    css_dir_lis.append([item['request']['url'],item['response']['content']['text']])
+
+        data_to_return_list.append({'URL':item['request']['url'],
+                                    'Content-Type':content_type,
+                                    'ResourceSize':item['response']['content']['size'],
+                                    'Status':item['response']['status'],
+                                    'Host':host,
+                                    'Referer':referer,
+                                    'Response_Headers':response_headers})
+    to_return=[]
+    for d in data_to_return_list:
+        css_names=[]
+        for css in css_dir_lis:
+            parsed = urlparse(d['URL'])
+            url_path=parsed.path.split('/')[-1].lower()
+            if url_path in css[1].lower() and '.' in url_path:
+                css_names.append(css[0])
+        d['URL_IN_CSS']=css_names
+        to_return.append(d)
+
+
+    if print_css=='Yes':
+        #SPEC_PRINT(['You CSS content is:'])
+        for item in css_dir_lis:
+            print ''
+            print '-'*100
+            print 'CSS URL --> '+item[0]
+            print ''
+            print 'CSS Content:\r\n'
+            print item[1]
+
+
+
+    return to_return
+
+
 
 
 
@@ -194,6 +252,7 @@ def GET_ALL_DOMAINS(har_file):
         all_domains.append(
             {'URL':item['request']['url'],
              'Host':host,
+             'Content-Type':content_type,
              'Referer':referer,
              'ParsedDomain':parsed_domain,
              'Status':item['response']['status'],
@@ -242,7 +301,8 @@ RULES=[
     'Minimize number of third-party resources',
     'Add long term headers expiration dates',
     'Use a Content Delivery Network (CDN)',
-    "Don't download the same data twice"
+    "Don't download the same data twice",
+    'Make fewer HTTP requests'
     ]
 test=CHOOSE_OPTION_FROM_LIST_1(RULES, 'Choose Rule you would like to test:')
 dir_files=[fil for fil in os.listdir('.') if fil.endswith('.py')==False and fil.startswith('.')==False]
@@ -303,7 +363,7 @@ if test=='Reduce the size of your images':
     web_directory=CHOOSE_OPTION_FROM_LIST_1(directories,'Choose WebPage saved resources directory:')
     td_parties=open(third_parties_file,'r').read().lower()
     result=GET_ALL_RECEIVED_IMAGES(har_file)
-    rules_result=open(report_file,'r').read()
+    rules_result=open(report_file,'r').read().lower()
     packet_list=open(pl_file,'r').read().lower()
     result_list=[]
     for r in result:
@@ -803,7 +863,7 @@ if test=="Don't download the same data twice":
     4)	Start Emulation on NV tab
     5)	Browse to some site on second TAB
     6)	Stop NV once site is loaded
-    7)	On second TAB use "Copy all as HAR WITH CONTENT" on "Network" and save all the content into *.har file
+    7)	On second TAB stop recording and use "Copy all as HAR WITH CONTENT" on "Network" and save all the content into *.har file
     8)	Run NV analyzing and save PL file as *csv (Open *.pcap file with Wireshark go to : File - Export Packet Dissections - As CSV)
     9)	Save NV rule's report as *.csv in report.txt file ("Desktop" for Desktop mode and "iPhone" for mobile)
     10)	Open created result file with Excel and analyze the result according rul'e defenition, result file contains the following columns:
@@ -817,7 +877,7 @@ if test=="Don't download the same data twice":
     third_parties_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.txt')==True],'Choose 3rd parties file:')
     td_parties=open(third_parties_file,'r').read().lower()
     result=GET_ALL_RECEIVED_RESOURCES(har_file)
-    rules_result=open(report_file,'r').read()
+    rules_result=open(report_file,'r').read().lower()
     packet_list=open(pl_file,'r').read().lower()
     result_list=[]
     for r in result:
@@ -839,8 +899,66 @@ if test=="Don't download the same data twice":
             in_pl=True
         r.update({'Parsed_URL_Path':url_path})
         r.update({'Is_In_PL':in_pl})
-        print r.keys()
+        print r
         result_list.append(r)
     result_file=har_file.replace('.har','.csv')
     WRITE_DICTS_TO_CSV(result_file,result_list)
     SPEC_PRINT(['Your result file is ready!!!','File name: '+result_file])
+
+
+
+if test=="Make fewer HTTP requests":
+    usage='''### USAGE ###
+    1)	Use Chrome
+    2)	Close all tabs except NV
+    3)	Open a new TAB with "Developers Tools" opened
+    4)	Start Emulation on NV tab
+    5)	Browse to some site on second TAB
+    6)	Stop NV once site is loaded
+    7)	On second TAB stop recording and use "Copy all as HAR WITH CONTENT" on "Network" and save all the content into *.har file
+    8)	Run NV analyzing and save PL file as *csv (Open *.pcap file with Wireshark go to : File - Export Packet Dissections - As CSV)
+    9)	Save NV rule's report as *.csv in report.txt file ("Desktop" for Desktop mode and "iPhone" for mobile)
+    10)	Open created result file with Excel and analyze the result according rul'e defenition, result file contains the following columns:
+    ['Status', 'Is_In_Rule', 'URL', 'Is_In_PL', 'Host', 'ResourceSize', 'Referer', 'Is_in_3d_Party', 'Content-Type', 'Parsed_URL_Path']
+    '''
+    print usage
+    CONTINUE('Are you ready to start analyzing process?')
+    har_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.har')==True],'Choose *har file:')
+    report_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.txt')==True],'Choose rule result file:')
+    pl_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.csv')==True],'Choose PL file:')
+    third_parties_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.txt')==True],'Choose 3rd parties file:')
+    print_or_not=['Yes','No']
+    css_print=CHOOSE_OPTION_FROM_LIST_1(print_or_not,'Would you like to print CSS content?')
+    td_parties=open(third_parties_file,'r').read().lower()
+    result=GET_ALL_RECEIVED_OBJECTS(har_file,css_print)
+    rules_result=open(report_file,'r').read().lower()
+    packet_list=open(pl_file,'r').read().lower()
+    result_list=[]
+    for r in result:
+        in_rule=False
+        if r['URL'].lower() in rules_result:
+            in_rule=True
+        r.update({'Is_In_Rule':in_rule})
+        in_td_parties=False
+        try:
+            if get_tld(r['URL']).lower() in td_parties:
+                in_td_parties=True
+        except Exception, e:
+            in_td_parties=str(e)
+        r.update({'Is_in_3d_Party':in_td_parties})
+        in_pl=False
+        parsed = urlparse(r['URL'])
+        url_path=parsed.path.lower()
+        if url_path in packet_list:
+            in_pl=True
+        r.update({'Parsed_URL_Path':url_path})
+        r.update({'Is_In_PL':in_pl})
+
+        if css_print=='No':
+            print r
+        result_list.append(r)
+    result_file=har_file.replace('.har','.csv')
+    WRITE_DICTS_TO_CSV(result_file,result_list)
+    SPEC_PRINT(['Your result file is ready!!!','File name: '+result_file])
+
+
