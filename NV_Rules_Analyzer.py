@@ -127,8 +127,9 @@ def GET_ALL_RECEIVED_OBJECTS(har_file_with_content, print_css='No'):
         css_names=[]
         for css in css_dir_lis:
             parsed = urlparse(d['URL'])
-            url_path=parsed.path.split('/')[-1].lower()
-            if url_path in css[1].lower() and '.' in url_path:
+            url_path=parsed.path.lower()[1:]
+            print url_path.strip()
+            if url_path in css[1].lower():
                 css_names.append(css[0])
         d['URL_IN_CSS']=css_names
         to_return.append(d)
