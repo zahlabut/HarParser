@@ -12,7 +12,7 @@ from PIL import Image
 import hashlib
 
 
-
+import urllib2
 
 def GET_DATA_MD5(data):
     return hashlib.md5(data.encode('utf-8')).hexdigest()
@@ -91,7 +91,6 @@ def GET_ALL_RECEIVED_RESOURCES(har_file_with_content):
         to_return.append(d)
     return to_return
 
-
 def GET_ALL_RECEIVED_OBJECTS(har_file_with_content, print_css='No'):
     css_dir_lis=[]
     data_to_return_list=[]
@@ -102,6 +101,7 @@ def GET_ALL_RECEIVED_OBJECTS(har_file_with_content, print_css='No'):
         host=None
         referer=None
         response_headers=''
+        css_content_from_web=None
         for h in item['request']['headers']:
             if 'host' in str(h).lower():
                 host=h['value']
@@ -110,10 +110,19 @@ def GET_ALL_RECEIVED_OBJECTS(har_file_with_content, print_css='No'):
         content_type=None
         for header in item['response']['headers']:
             response_headers+=header['name']+':'+header['value']+'\r\n'
-            if header['name']=='Content-Type' and len(header['value'].lower())>0:
+            if header['name'].lower()=='content-type':
                 content_type=header['value']
                 if 'css' in content_type.lower() and 'text' in item['response']['content'].keys():
-                    css_dir_lis.append([item['request']['url'],item['response']['content']['text']])
+                    css_dir_lis.append([item['request']['url'],item['response']['content']['text'].lower()])
+                    css_content_from_web = False
+                if 'css' in content_type.lower() and 'text' not in item['response']['content'].keys():
+                    try:
+                        css_content=urllib2.urlopen(item['request']['url']).read().decode('utf-8','ignore')
+                    except Exception,e:
+                        css_content=str(e)
+                    css_dir_lis.append([item['request']['url'],css_content])
+                    css_content_from_web = True
+
 
         data_to_return_list.append({'URL':item['request']['url'],
                                     'Content-Type':content_type,
@@ -121,6 +130,7 @@ def GET_ALL_RECEIVED_OBJECTS(har_file_with_content, print_css='No'):
                                     'Status':item['response']['status'],
                                     'Host':host,
                                     'Referer':referer,
+                                    'CSS_Content_From_WEB':css_content_from_web,
                                     'Response_Headers':response_headers})
     to_return=[]
     for d in data_to_return_list:
@@ -128,10 +138,24 @@ def GET_ALL_RECEIVED_OBJECTS(har_file_with_content, print_css='No'):
         for css in css_dir_lis:
             parsed = urlparse(d['URL'])
             url_path=parsed.path.lower()[1:]
-            print url_path.strip()
-            if url_path in css[1].lower():
+            is_found=False
+            if len(url_path)>1 and url_path in css[1].lower() and '/' in url_path:
                 css_names.append(css[0])
-        d['URL_IN_CSS']=css_names
+            if len(url_path)>1 and url_path not in css[1].lower() and '.' in url_path:
+                url_path=url_path.split('/')[-1]
+                if '.' in url_path and url_path in css[1].lower():
+                    css_names.append(css[0])
+
+        css_names=list(set(css_names))
+        css_names_string='Appears in:'+str(len(css_names))+' CSS'+'\r\n'
+        for c in css_names:
+            css_names_string+=c+'\r\n'
+        d['URL_IN_CSS']=css_names_string
+        d['Searched_In_CSS']=url_path
+        css_in_referer=False
+        if d['Referer']!=None and '.css' in d['Referer'].lower():
+            css_in_referer=True
+            d['Referer contains ".css" string']=css_in_referer
         to_return.append(d)
 
 
@@ -148,10 +172,6 @@ def GET_ALL_RECEIVED_OBJECTS(har_file_with_content, print_css='No'):
 
 
     return to_return
-
-
-
-
 
 def CHECK_COMPRESS_RULE(har_file):
     data_to_return_list=[]
@@ -234,22 +254,29 @@ def GET_ALL_DOMAINS(har_file):
     data = json.loads(data)
     entries=data['log']['entries']
     for item in entries:
+        host=None
+        referer=None
+        parsed_domain=None
+        content_type=None
         for h in item['request']['headers']:
-            host=None
             if 'host' in str(h).lower():
                 host=h['value']
                 break
         for h in item['request']['headers']:
-            referer=None
             if 'referer' in str(h).lower():
                 #print item['request']['headers']
                 referer=h['value']
                 break
-        parsed_domain=None
         try:
             parsed_domain=get_tld(item['request']['url'])
         except Exception,e:
             parsed_domain=str(e)
+
+        for h in item['response']['headers']:
+            if 'content-type' in str(h).lower():
+               content_type=h['value']
+               break
+
         all_domains.append(
             {'URL':item['request']['url'],
              'Host':host,
@@ -287,7 +314,30 @@ def GET_IMAGE_RESOLUTION(img_path):
     except Exception,e:
         return {'Error':str(e)}
 
-
+def GET_ALL_RECEIVED_OBJECT_FROM_HAR(har_file):
+    data_to_return_list=[]
+    data=open(har_file,'r').read().decode('utf-8','ignore')
+    data = json.loads(data)
+    entries=data['log']['entries']
+    for item in entries:
+        content_type=None
+        transfer_encoding=None
+        content_length=None
+        for header in item['response']['headers']:
+            if header['name'].lower()=='content-type':
+                content_type=header['value']
+            if header['name'].lower()=='transfer-encoding':
+                transfer_encoding=header['value']
+            if header['name'].lower()=='content-length':
+                content_length=header['value']
+        data_to_return_list.append({'URL':item['request']['url'],
+                                    'Content-Type':content_type,
+                                    'Response_Headers':item['response']['headers'],
+                                    'Transfer-Encoding':transfer_encoding,
+                                    'Content-Length':content_length,
+                                    'BodySize':item['response']['bodySize'],
+                                    'Status':item['response']['status']})
+    return data_to_return_list
 
 TOOL_DESCRIPTION=['NV_Rules_Analyser_Tool','V 1.0','Designed by: Arkady','Goodbye world']
 SPEC_PRINT(TOOL_DESCRIPTION)
@@ -303,9 +353,13 @@ RULES=[
     'Add long term headers expiration dates',
     'Use a Content Delivery Network (CDN)',
     "Don't download the same data twice",
-    'Make fewer HTTP requests'
+    'Make fewer HTTP requests',
+    'Avoid large objects',
+    'Avoid referencing images in stylesheets'
     ]
 test=CHOOSE_OPTION_FROM_LIST_1(RULES, 'Choose Rule you would like to test:')
+if test=='Avoid referencing images in stylesheets':
+    test='Make fewer HTTP requests'
 dir_files=[fil for fil in os.listdir('.') if fil.endswith('.py')==False and fil.startswith('.')==False]
 for root, dirnames, filenames in os.walk('.'):
     break
@@ -920,7 +974,13 @@ if test=="Make fewer HTTP requests":
     8)	Run NV analyzing and save PL file as *csv (Open *.pcap file with Wireshark go to : File - Export Packet Dissections - As CSV)
     9)	Save NV rule's report as *.csv in report.txt file ("Desktop" for Desktop mode and "iPhone" for mobile)
     10)	Open created result file with Excel and analyze the result according rul'e defenition, result file contains the following columns:
-    ['Status', 'Is_In_Rule', 'URL', 'Is_In_PL', 'Host', 'ResourceSize', 'Referer', 'Is_in_3d_Party', 'Content-Type', 'Parsed_URL_Path']
+    ['Referer contains ".css" string', 'URL_IN_CSS', 'Response_Headers', 'URL', 'CSS_Content_From_WEB',
+    'Parsed_URL_Path', 'Status', 'Is_In_Rule', 'Searched_In_CSS', 'Is_In_PL', 'Host', 'ResourceSize', 'Referer', 'Is_in_3d_Party', 'Content-Type']
+    Where:
+    URL_IN_CSS --> list of *.css where object presents
+    CSS_Content_From_WEB --> means that CSS content was fetched from WEB directly (Sometimes 'text' content is missing in *.har)
+    Note: in case you are testing "Avoid referencing images in stylesheets" verify using Result *.csv file that reported
+    images per CSS are the same as in CSV (Number of images and their paths)
     '''
     print usage
     CONTINUE('Are you ready to start analyzing process?')
@@ -932,10 +992,69 @@ if test=="Make fewer HTTP requests":
     css_print=CHOOSE_OPTION_FROM_LIST_1(print_or_not,'Would you like to print CSS content?')
     td_parties=open(third_parties_file,'r').read().lower()
     result=GET_ALL_RECEIVED_OBJECTS(har_file,css_print)
+    rules_result=open(report_file,'r').readlines()
+    rules_result=[line.strip().lower() for line in rules_result if line.endswith('.css')==False] #ignore .css lines
+    packet_list=open(pl_file,'r').read().lower()
+    result_list=[]
+    for r in result:
+        in_rule=False
+        if r['URL'].lower() in rules_result:
+            in_rule=True
+        r.update({'Is_In_Rule':in_rule})
+        in_td_parties=False
+        try:
+            if get_tld(r['URL']).lower() in td_parties:
+                in_td_parties=True
+        except Exception, e:
+            in_td_parties=str(e)
+        r.update({'Is_in_3d_Party':in_td_parties})
+
+        in_pl=False
+        parsed = urlparse(r['URL'])
+        url_path=parsed.path.lower()
+        if url_path in packet_list:
+            in_pl=True
+        r.update({'Parsed_URL_Path':url_path})
+        r.update({'Is_In_PL':in_pl})
+
+        if css_print=='No':
+            print r
+        result_list.append(r)
+    result_file=har_file.replace('.har','.csv')
+    WRITE_DICTS_TO_CSV(result_file,result_list)
+    SPEC_PRINT(['Your result file is ready!!!','File name: '+result_file])
+
+
+
+
+
+if test=="Avoid large objects":
+    usage='''### USAGE ###
+    1)	Use Chrome
+    2)	Close all tabs except NV
+    3)	Open a new TAB with "Developers Tools" opened
+    4)	Start Emulation on NV tab
+    5)	Browse to some site on second TAB
+    6)	Stop NV once site is loaded
+    7)	On second TAB stop recording and use "Copy all as HAR WITH CONTENT" on "Network" and save all the content into *.har file
+    8)	Run NV analyzing and save PL file as *csv (Open *.pcap file with Wireshark go to : File - Export Packet Dissections - As CSV)
+    9)	Save NV rule's report as *.csv in report.txt file ("Desktop" for Desktop mode and "iPhone" for mobile)
+    10)	Open created result file with Excel and analyze the result according rul'e defenition, result file contains the following columns:
+    ['Status', 'Content-Length', 'Response_Headers', 'URL', 'Transfer-Encoding', 'Content-Type', 'BodySize']
+    '''
+    print usage
+    CONTINUE('Are you ready to start analyzing process?')
+    har_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.har')==True],'Choose *har file:')
+    report_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.txt')==True],'Choose rule result file:')
+    pl_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.csv')==True],'Choose PL file:')
+    third_parties_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.txt')==True],'Choose 3rd parties file:')
+    td_parties=open(third_parties_file,'r').read().lower()
+    result=GET_ALL_RECEIVED_OBJECT_FROM_HAR(har_file)
     rules_result=open(report_file,'r').read().lower()
     packet_list=open(pl_file,'r').read().lower()
     result_list=[]
     for r in result:
+        print r
         in_rule=False
         if r['URL'].lower() in rules_result:
             in_rule=True
@@ -955,11 +1074,12 @@ if test=="Make fewer HTTP requests":
         r.update({'Parsed_URL_Path':url_path})
         r.update({'Is_In_PL':in_pl})
 
-        if css_print=='No':
-            print r
         result_list.append(r)
     result_file=har_file.replace('.har','.csv')
     WRITE_DICTS_TO_CSV(result_file,result_list)
     SPEC_PRINT(['Your result file is ready!!!','File name: '+result_file])
+
+
+
 
 
