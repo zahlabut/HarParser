@@ -1,3 +1,4 @@
+#!/usr/bin/python
 import json
 from Mi_Functions import *
 import urlparse
@@ -10,9 +11,13 @@ from Mi_Functions import *
 from TrafficTypes import *
 from PIL import Image
 import hashlib
-
-
+from selenium import webdriver
+import urllib
+import shutil,os,platform
 import urllib2
+
+
+
 
 def GET_DATA_MD5(data):
     return hashlib.md5(data.encode('utf-8')).hexdigest()
@@ -339,9 +344,56 @@ def GET_ALL_RECEIVED_OBJECT_FROM_HAR(har_file):
                                     'Status':item['response']['status']})
     return data_to_return_list
 
+def GET_ALL_IMAGE_SIZES_HTML_AND_REAL(url):
+    driver = webdriver.Firefox()
+    driver.get(url)
+    images=driver.find_elements_by_tag_name('img')
+    lis=[]
+#    CONTINUE('Stop NV emulation, to continue?')
+    for image in images:
+        scaling=None
+        url=image.get_attribute("src")
+        html_size=image.size
+        lis.append({'HTML_Size':html_size,'HTML_URL':url})
+    driver.quit()
+
+    for l in lis:
+        scaling=None
+        url=l['HTML_URL']
+        urllib.urlretrieve(url,"image")
+        image_path=os.path.abspath('image')
+        real_size=GET_IMAGE_RESOLUTION(image_path)
+        try:
+            if l['HTML_Size']['width']<real_size['Width'] and l['HTML_Size']['height']<real_size['Height']:
+                scaling=True
+        except Exception,e:
+            print str(e)
+        l.update({'Scaling':scaling})
+        l.update({'Real_Size':real_size})
+        print ' --> '+url, str(scaling)
+    driver.quit()
+    os.remove(os.path.abspath('image'))
+    return lis
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 TOOL_DESCRIPTION=['NV_Rules_Analyser_Tool','V 1.0','Designed by: Arkady','Goodbye world']
 SPEC_PRINT(TOOL_DESCRIPTION)
 RULES=[
+    '*** Cleaner ***',
     'Validate JPG reported total values',
     'Reduce the size of your images',
     'Compress Components',
@@ -355,9 +407,35 @@ RULES=[
     "Don't download the same data twice",
     'Make fewer HTTP requests',
     'Avoid large objects',
-    'Avoid referencing images in stylesheets'
+    'Avoid referencing images in stylesheets',
+    'Avoid image scaling in HTML'
     ]
 test=CHOOSE_OPTION_FROM_LIST_1(RULES, 'Choose Rule you would like to test:')
+
+if test=='*** Cleaner ***':
+    lo_lagaat=['.git',
+               '.idea',
+               '3rdPartyList.txt',
+               'ColboTigo.py',
+               'HTTP_Server_Status_Codes.py',
+               'KnownCdnResources.java',
+               'Mi_Functions.py',
+               'NV_Rules_Analyzer.py',
+               'README.md',
+               'TrafficTypes.py']
+    known_ext=['.pyc']
+    CONTINUE('All files except: '+str(lo_lagaat)+' will be deleted, to continue?')
+    files=os.listdir('.')
+    for f in files:
+        if f not in lo_lagaat and '.'+f.split('.')[-1] not in known_ext:
+            print f
+            try:
+                os.remove(os.path.abspath(f))
+            except Exception,e:
+                shutil.rmtree(os.path.abspath(f), ignore_errors=True)
+
+
+
 if test=='Avoid referencing images in stylesheets':
     test='Make fewer HTTP requests'
 dir_files=[fil for fil in os.listdir('.') if fil.endswith('.py')==False and fil.startswith('.')==False]
@@ -1079,6 +1157,57 @@ if test=="Avoid large objects":
     WRITE_DICTS_TO_CSV(result_file,result_list)
     SPEC_PRINT(['Your result file is ready!!!','File name: '+result_file])
 
+
+
+
+if test=="Avoid image scaling in HTML":
+    usage='''### USAGE ###
+    1)	Start NV Emulation
+    2)	Type tested site (script will prompt you to type the URL)
+    3)	Stop NV once firefox is closed (Selenium based test)
+    4)	Run NV analyzing and save PL file as *csv (Open *.pcap file with Wireshark go to : File - Export Packet Dissections - As CSV)
+    5)	Save NV rule's report as *.csv in report.txt file ("Desktop" for Desktop mode and "iPhone" for mobile)
+    6)	Open created result file with Excel and analyze the result according rul'e defenition, result file contains the following columns:
+    ['Status', 'Content-Length', 'Response_Headers', 'URL', 'Transfer-Encoding', 'Content-Type', 'BodySize']
+    '''
+    print usage
+    CONTINUE('Are you ready to start analyzing process?')
+    url=raw_input('Enter your test site without "http://": ')
+    url='http://'+url
+    result=GET_ALL_IMAGE_SIZES_HTML_AND_REAL(url)
+    CONTINUE("Do you have PL as csv + Rule's report + 3dParties files?")
+    report_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.txt')==True],'Choose rule result file:')
+    pl_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.csv')==True],'Choose PL file:')
+    third_parties_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.txt')==True],'Choose 3rd parties file:')
+    td_parties=open(third_parties_file,'r').read().lower()
+    rules_result=open(report_file,'r').read().lower()
+    packet_list=open(pl_file,'r').read().lower()
+    result_list=[]
+    for r in result:
+        print r
+        in_rule=False
+        if r['HTML_URL'].lower() in rules_result:
+            in_rule=True
+        r.update({'Is_In_Rule':in_rule})
+        in_td_parties=False
+        try:
+            if get_tld(r['HTML_URL']).lower() in td_parties:
+                in_td_parties=True
+        except Exception, e:
+            in_td_parties=str(e)
+        r.update({'Is_in_3d_Party':in_td_parties})
+        in_pl=False
+        parsed = urlparse(r['HTML_URL'])
+        url_path=parsed.path.lower()
+        if url_path in packet_list:
+            in_pl=True
+        r.update({'Parsed_URL_Path':url_path})
+        r.update({'Is_In_PL':in_pl})
+
+        result_list.append(r)
+    result_file='ImageSacalingRule.csv'
+    WRITE_DICTS_TO_CSV(result_file,result_list)
+    SPEC_PRINT(['Your result file is ready!!!','File name: '+result_file])
 
 
 
