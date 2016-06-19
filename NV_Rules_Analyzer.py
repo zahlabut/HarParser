@@ -16,8 +16,21 @@ import urllib
 import shutil,os,platform
 import urllib2
 
-
-
+def IS_IN_3D_PARTIES(td_file,domain,referer=None):
+    td_parties=open(td_file,'r').read().lower().replace('''\\\\.''','.')
+    in_td_parties=False
+    by_domain=''
+    by_referer=''
+    if str(domain).lower() in td_parties:
+        in_td_parties=True
+        by_domain='ByDomain'
+    if referer!=None:
+        referer=urlparse(referer)
+        referer=referer.netloc.lower()
+        if referer in td_parties:
+            in_td_parties=True
+            by_referer='ByReferer'
+    return (in_td_parties,by_domain,by_referer)
 
 def GET_DATA_MD5(data):
     return hashlib.md5(data.encode('utf-8')).hexdigest()
@@ -56,12 +69,20 @@ def GET_ALL_RECEIVED_IMAGES(har_file):
     data = json.loads(data)
     entries=data['log']['entries']
     for item in entries:
+        referer=None
+        for h in item['request']['headers']:
+            if 'referer' == h['name'].lower():
+                referer=h['value']
+                break
         if 200<=item['response']['status']<300:
             #print item['response']['headers']
+
+
             for header in item['response']['headers']:
                 if header['name']=='Content-Type' and 'image' in header['value'].lower():
                     data_to_return_list.append({'URL':item['request']['url'],
                                                 'Content-Type':header['value'],
+                                                'Referer':referer,
                                                 'ImageSize':item['response']['content']['size'],
                                                 'Response_Headers':item['response']['headers'],
                                                 'Status':item['response']['status']})
@@ -74,8 +95,12 @@ def GET_ALL_RECEIVED_RESOURCES(har_file_with_content):
     data = json.loads(data)
     entries=data['log']['entries']
     for item in entries:
-
+        referer=None
         md5=None
+        for h in item['request']['headers']:
+            if 'referer' == h['name'].lower():
+                referer=h['value']
+                break
         if 'text' in item['response']['content'].keys():
             md5=GET_DATA_MD5(item['response']['content']['text'])
             md5s.append(md5)
@@ -85,10 +110,13 @@ def GET_ALL_RECEIVED_RESOURCES(har_file_with_content):
             if header['name']=='Content-Type' and len(header['value'].lower())>0:
                 content_type=header['value']
 
+
+
         data_to_return_list.append({'URL':item['request']['url'],
                                     'Content-Type':content_type,
                                     'ResourceSize':item['response']['content']['size'],
                                     'Status':item['response']['status'],
+                                    'Referer':referer,
                                     'md5':md5})
     to_return=[]
     for d in data_to_return_list:
@@ -186,10 +214,14 @@ def CHECK_COMPRESS_RULE(har_file):
     for entry in entries:
         data_to_return={}
         accept_encoding_header_value=None
+        referer=None
         for req_header in entry['request']['headers']:
             if 'accept-encoding'==req_header['name'].lower():
                 accept_encoding_header_value=req_header['value']
+            if 'referer'==req_header['name'].lower():
+                referer=req_header['value']
         data_to_return['Accept-Encoding']=accept_encoding_header_value
+        data_to_return['Referer']=referer
         data_to_return['URL']=entry['request']['url']
         data_to_return['Code']=entry['response']['status']
         data_to_return['Response_Headers']=entry['response']['headers']
@@ -264,12 +296,11 @@ def GET_ALL_DOMAINS(har_file):
         parsed_domain=None
         content_type=None
         for h in item['request']['headers']:
-            if 'host' in str(h).lower():
+            if 'host' == h['name'].lower():
                 host=h['value']
                 break
         for h in item['request']['headers']:
-            if 'referer' in str(h).lower():
-                #print item['request']['headers']
+            if 'referer' == h['name'].lower():
                 referer=h['value']
                 break
         try:
@@ -278,7 +309,7 @@ def GET_ALL_DOMAINS(har_file):
             parsed_domain=str(e)
 
         for h in item['response']['headers']:
-            if 'content-type' in str(h).lower():
+            if 'content-type' == h['name'].lower():
                content_type=h['value']
                break
 
@@ -297,8 +328,12 @@ def GET_ALL_RESPONSE_HEADERS(har_file):
     data=open(har_file,'r').read().decode('utf-8','ignore')
     data = json.loads(data)
     entries=data['log']['entries']
-
     for entry in entries:
+        referer=None
+        for h in entry['request']['headers']:
+            if 'referer' == h['name'].lower():
+                referer=h['value']
+                break
         cache_headers=['Cache-Control','Expires','Date','Pragma','Etag','Last-Modified','Age']
         cache_headers=[item.lower() for item in cache_headers]
         response_headers=''
@@ -307,7 +342,7 @@ def GET_ALL_RESPONSE_HEADERS(har_file):
             response_headers+=str(nv)+'\r\n'
             if nv['name'].lower() in cache_headers:
                 cache_headers_dic.update({nv['name']:nv['value']})
-        dic={'URL':entry['request']['url'],'Response_Headers':response_headers,'Status':entry['response']['status'],'Cache_Headers':cache_headers_dic}
+        dic={'URL':entry['request']['url'],'Response_Headers':response_headers,'Status':entry['response']['status'],'Cache_Headers':cache_headers_dic,'Referer':referer}
         all_urls.append(dic)
     return all_urls
 
@@ -328,6 +363,7 @@ def GET_ALL_RECEIVED_OBJECT_FROM_HAR(har_file):
         content_type=None
         transfer_encoding=None
         content_length=None
+        referer=None
         for header in item['response']['headers']:
             if header['name'].lower()=='content-type':
                 content_type=header['value']
@@ -335,12 +371,17 @@ def GET_ALL_RECEIVED_OBJECT_FROM_HAR(har_file):
                 transfer_encoding=header['value']
             if header['name'].lower()=='content-length':
                 content_length=header['value']
+        for header in item['request']['headers']:
+            if header['name'].lower()=='referer':
+                referer=header['value']
+
         data_to_return_list.append({'URL':item['request']['url'],
                                     'Content-Type':content_type,
                                     'Response_Headers':item['response']['headers'],
                                     'Transfer-Encoding':transfer_encoding,
                                     'Content-Length':content_length,
                                     'BodySize':item['response']['bodySize'],
+                                    'Referer':referer,
                                     'Status':item['response']['status']})
     return data_to_return_list
 
@@ -382,15 +423,7 @@ def GET_ALL_IMAGE_SIZES_HTML_AND_REAL(url):
 
 
 
-
-
-
-
-
-
-
-
-TOOL_DESCRIPTION=['NV_Rules_Analyser_Tool','V 1.0','Designed by: Arkady','Goodbye world']
+TOOL_DESCRIPTION=['NV_Rules_Analyser_Tool','V 1.0','Designed by: Arkady','Goodbye world!!!']
 SPEC_PRINT(TOOL_DESCRIPTION)
 RULES=[
     '*** Cleaner ***',
@@ -438,11 +471,12 @@ if test=='*** Cleaner ***':
 
 if test=='Avoid referencing images in stylesheets':
     test='Make fewer HTTP requests'
+
 dir_files=[fil for fil in os.listdir('.') if fil.endswith('.py')==False and fil.startswith('.')==False]
 for root, dirnames, filenames in os.walk('.'):
     break
 directories=[d for d in dirnames if d.startswith('.')==False]
-#SPEC_PRINT(['Your files']+dir_files)
+SPEC_PRINT(['Your files']+dir_files)
 
 if test=='Validate JPG reported total values':
     usage=''' ### USAGE ###
@@ -485,7 +519,7 @@ if test=='Reduce the size of your images':
     9)	Save NV rule's report as *.csv in report.txt file ("Desktop" for Desktop mode and "iPhone" for mobile)
     10) Save whole Web Page using "Save as" from chrome (use english characters in "save to" name) and save type "Webpage Complete" (HTML + all resources) in current directory
     11)	Open created result file with Excel and analyze the result according rul'e defenition, result file contains the following columns:
-    ['Status', 'ImageSize', 'Response_Headers', 'Is_in_3d_Party', 'URL', 'Image_resolution', 'Content-Type', 'Is_In_PL', 'Parsed_URL_Path', 'Is_In_Rule']
+    ['Status', 'ImageSize', 'Response_Headers', 'Is_in_3d_Party', 'URL', 'Image_resolution', 'Content-Type', 'Is_In_PL', 'Parsed_URL_Path', 'Is_In_Rule','Referer']
     '''
     print usage
     CONTINUE('Are you ready to start analyzing process?')
@@ -494,7 +528,6 @@ if test=='Reduce the size of your images':
     pl_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.csv')==True],'Choose PL file:')
     third_parties_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.txt')==True],'Choose 3rd parties file:')
     web_directory=CHOOSE_OPTION_FROM_LIST_1(directories,'Choose WebPage saved resources directory:')
-    td_parties=open(third_parties_file,'r').read().lower()
     result=GET_ALL_RECEIVED_IMAGES(har_file)
     rules_result=open(report_file,'r').read().lower()
     packet_list=open(pl_file,'r').read().lower()
@@ -504,12 +537,11 @@ if test=='Reduce the size of your images':
         if r['URL'].lower() in rules_result:
             in_rule=True
         r.update({'Is_In_Rule':in_rule})
-        in_td_parties=False
-        try:
-            if get_tld(r['URL']).lower() in td_parties:
-                in_td_parties=True
-        except Exception, e:
-            in_td_parties=str(e)
+
+        in_td_parties=IS_IN_3D_PARTIES(third_parties_file,r['URL'],r['Referer'])
+
+
+
         r.update({'Is_in_3d_Party':in_td_parties})
         in_pl=False
         parsed = urlparse(r['URL'])
@@ -547,7 +579,7 @@ if test=='Compress Components':
     8)	Run NV analyzing and save PL file as *csv (Open *.pcap file with Wireshark go to : File - Export Packet Dissections - As CSV)
     9)	Save NV rule's report as *.csv in report.txt file
     10)	Open created result file with Excel and analyze the result according rule's defenition, result file contains the following columns:
-    ['Content-Length', 'Code', 'Accept-Encoding', 'Response_Headers', 'Content-Encoding', 'URL', 'Response_Body_Size', 'Is_In_PL', 'Is_in_3d_Party', 'Content-Type', 'Parsed_URL_Path', 'Is_In_Rule']
+    ['Content-Length', 'Code', 'Accept-Encoding', 'Response_Headers', 'Content-Encoding', 'URL', 'Response_Body_Size', 'Is_In_PL', 'Is_in_3d_Party', 'Content-Type', 'Parsed_URL_Path', 'Is_In_Rule','Referer']
     Note: see Issue 20340, you can see current implementation there'''
     print usage
     CONTINUE('Are you ready to start analyzing process?')
@@ -565,12 +597,9 @@ if test=='Compress Components':
         if d['URL'].lower() in rules_result:
             in_rule=True
         d.update({'Is_In_Rule':in_rule})
-        in_td_parties=False
-        try:
-            if get_tld(d['URL']).lower() in td_parties:
-                in_td_parties=True
-        except Exception, e:
-            in_td_parties=str(e)
+
+        in_td_parties=IS_IN_3D_PARTIES(third_parties_file,get_tld(d['URL']),d['Referer'])
+
         d.update({'Is_in_3d_Party':in_td_parties})
         in_pl=False
         parsed = urlparse(d['URL'])
@@ -606,7 +635,6 @@ if test=='Try to reduce the size of the cookies':
     report_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.txt')==True],'Choose rule result file:')
     pl_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.csv')==True],'Choose PL file:')
     third_parties_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.txt')==True],'Choose 3rd parties file:')
-    td_parties=open(third_parties_file,'r').read().lower()
     rules_result=open(report_file,'r').read().lower()
     packet_list=open(pl_file,'r').read().lower()
     packet_list_lines=open(pl_file,'r').readlines()
@@ -617,10 +645,10 @@ if test=='Try to reduce the size of the cookies':
         if str(r['URL']).lower() in rules_result:
             in_rule=True
         r.update({'Is_In_Rule':in_rule})
-        in_td_parties=False
-        if str(r['ParsedDomain'].split('.')[0]).lower() in td_parties:
-            in_td_parties=True
+
+        in_td_parties=IS_IN_3D_PARTIES(third_parties_file, r['ParsedDomain'].split('.')[0],r['Referer'])
         r.update({'Is_in_3d_Party':in_td_parties})
+
         in_pl=False
         parsed = urlparse(r['URL'])
         url_path=parsed.path.lower()
@@ -659,7 +687,6 @@ if test=='Use fewer domains':
     report_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.txt')==True],'Choose rule result file:')
     pl_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.csv')==True],'Choose PL file:')
     third_parties_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.txt')==True],'Choose 3rd parties file:')
-    td_parties=open(third_parties_file,'r').read().lower()
     result=GET_ALL_DOMAINS(har_file)
     hosts=[i['Host'] for i in result]
     referers=[i['Referer'] for i in result]
@@ -693,10 +720,7 @@ if test=='Use fewer domains':
         r.update({'ReportedHost':reported_host})
         r.update({'InReport':in_report})
         r.update({'CountedHost':hosts.count(r['Host'])})
-        if str(r['Host']).lower() in td_parties:
-            r.update({'Is_3d_Party':True})
-        if str(r['Host']).lower() not in td_parties:
-            r.update({'Is_3d_Party':False})
+        r.update({'Is_3d_Party':IS_IN_3D_PARTIES(third_parties_file,r['Host'],r['Referer'])})
         updated_result.append(r)
         print r
     result_file=har_file.replace('.har','.csv')
@@ -774,7 +798,6 @@ if test=='Minimize number of third-party resources':
     report_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.txt')==True],'Choose rule result file:')
     pl_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.csv')==True],'Choose PL file:')
     third_parties_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.txt')==True],'Choose 3rd parties file:')
-    td_parties=open(third_parties_file,'r').read().lower()
     rules_result=open(report_file,'r').read().lower()
     result=GET_ALL_DOMAINS(har_file)
     packet_list=open(pl_file,'r').read().lower()
@@ -789,9 +812,7 @@ if test=='Minimize number of third-party resources':
         r.update({'Is_In_Rule':in_rule})
 
 
-        in_td_parties=False
-        if str(r['ParsedDomain'].split('.')[0]).lower() in td_parties:
-            in_td_parties=True
+        in_td_parties=IS_IN_3D_PARTIES(third_parties_file,r['ParsedDomain'],r['Referer'])
         r.update({'Is_in_3d_Party':in_td_parties})
 
 
@@ -861,8 +882,7 @@ if test=='Add long term headers expiration dates':
         else:
             d['ExpiresInDays']=None
         updated_dict_list.append(d)
-    # Pass over all cached files in loop nd add all relevan data from PL, Report and HAR file
-    td_parties=open(third_parties_file,'r').read().lower()
+    # Pass over all cached files in loop nd add all relevant data from PL, Report and HAR file
     rules_result=open(report_file,'r').read().lower()
     packet_list=open(pl_file,'r').read().lower()
     result_list=[]
@@ -874,12 +894,7 @@ if test=='Add long term headers expiration dates':
             in_rule=True
         d.update({'Is_In_Rule':in_rule})
 
-        in_td_parties=False
-        try:
-            if get_tld(d['Key ']).lower() in td_parties:
-                in_td_parties=True
-        except:
-            pass
+        in_td_parties=IS_IN_3D_PARTIES(third_parties_file,get_tld(d['Key ']),d['Referer'])
         d.update({'Is_in_3d_Party':in_td_parties})
 
         in_pl=False
@@ -934,7 +949,7 @@ if test=='Use a Content Delivery Network (CDN)':
     cdn_planet_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.csv')==True],'Choose CDN Planet result *.csv file:')
     cdn_planet_content=open(cdn_planet_file,'r').read().lower()
     cdn_planet_content_lines=open(cdn_planet_file,'r').readlines()
-    td_parties=open(third_parties_file,'r').read().lower()
+    #td_parties=open(third_parties_file,'r').read().lower()
     known_cdn_file='KnownCdnResources.java'
     known_cdns=open(known_cdn_file,'r').read().lower()
     rules_result=open(report_file,'r').read().lower()
@@ -964,12 +979,7 @@ if test=='Use a Content Delivery Network (CDN)':
             in_rule=True
         d.update({'Is_In_Rule':in_rule})
 
-        in_td_parties=False
-        try:
-            if get_tld(d['URL']).lower() in td_parties:
-                in_td_parties=True
-        except Exception, e:
-            in_td_parties=str(e)
+        in_td_parties=IS_IN_3D_PARTIES(third_parties_file,get_tld(d['URL']).lower(), d['Referer'])
         d.update({'Is_in_3d_Party':in_td_parties})
 
         in_pl=False
@@ -1000,7 +1010,7 @@ if test=="Don't download the same data twice":
     8)	Run NV analyzing and save PL file as *csv (Open *.pcap file with Wireshark go to : File - Export Packet Dissections - As CSV)
     9)	Save NV rule's report as *.csv in report.txt file ("Desktop" for Desktop mode and "iPhone" for mobile)
     10)	Open created result file with Excel and analyze the result according rul'e defenition, result file contains the following columns:
-    ['Status', 'md5_appearance_number', 'Is_In_Rule', 'URL', 'Is_In_PL', 'ResourceSize', 'Is_in_3d_Party', 'Content-Type', 'Parsed_URL_Path', 'md5']
+    ['Status', 'md5_appearance_number', 'Is_In_Rule', 'URL', 'Is_In_PL', 'ResourceSize', 'Is_in_3d_Party', 'Content-Type', 'Parsed_URL_Path', 'md5','Referer']
     '''
     print usage
     CONTINUE('Are you ready to start analyzing process?')
@@ -1008,7 +1018,6 @@ if test=="Don't download the same data twice":
     report_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.txt')==True],'Choose rule result file:')
     pl_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.csv')==True],'Choose PL file:')
     third_parties_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.txt')==True],'Choose 3rd parties file:')
-    td_parties=open(third_parties_file,'r').read().lower()
     result=GET_ALL_RECEIVED_RESOURCES(har_file)
     rules_result=open(report_file,'r').read().lower()
     packet_list=open(pl_file,'r').read().lower()
@@ -1018,13 +1027,11 @@ if test=="Don't download the same data twice":
         if r['URL'].lower() in rules_result:
             in_rule=True
         r.update({'Is_In_Rule':in_rule})
-        in_td_parties=False
-        try:
-            if get_tld(r['URL']).lower() in td_parties:
-                in_td_parties=True
-        except Exception, e:
-            in_td_parties=str(e)
+
+        in_td_parties=IS_IN_3D_PARTIES(third_parties_file,get_tld(r['URL']).lower(),r['Referer'])
         r.update({'Is_in_3d_Party':in_td_parties})
+
+
         in_pl=False
         parsed = urlparse(r['URL'])
         url_path=parsed.path.lower()
@@ -1068,7 +1075,6 @@ if test=="Make fewer HTTP requests":
     third_parties_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.txt')==True],'Choose 3rd parties file:')
     print_or_not=['Yes','No']
     css_print=CHOOSE_OPTION_FROM_LIST_1(print_or_not,'Would you like to print CSS content?')
-    td_parties=open(third_parties_file,'r').read().lower()
     result=GET_ALL_RECEIVED_OBJECTS(har_file,css_print)
     rules_result=open(report_file,'r').readlines()
     rules_result=[line.strip().lower() for line in rules_result if line.endswith('.css')==False] #ignore .css lines
@@ -1079,12 +1085,7 @@ if test=="Make fewer HTTP requests":
         if r['URL'].lower() in rules_result:
             in_rule=True
         r.update({'Is_In_Rule':in_rule})
-        in_td_parties=False
-        try:
-            if get_tld(r['URL']).lower() in td_parties:
-                in_td_parties=True
-        except Exception, e:
-            in_td_parties=str(e)
+        in_td_parties=IS_IN_3D_PARTIES(third_parties_file,get_tld(r['URL']).lower(),r['Referer'])
         r.update({'Is_in_3d_Party':in_td_parties})
 
         in_pl=False
@@ -1118,7 +1119,7 @@ if test=="Avoid large objects":
     8)	Run NV analyzing and save PL file as *csv (Open *.pcap file with Wireshark go to : File - Export Packet Dissections - As CSV)
     9)	Save NV rule's report as *.csv in report.txt file ("Desktop" for Desktop mode and "iPhone" for mobile)
     10)	Open created result file with Excel and analyze the result according rul'e defenition, result file contains the following columns:
-    ['Status', 'Content-Length', 'Response_Headers', 'URL', 'Transfer-Encoding', 'Content-Type', 'BodySize']
+    ['Status', 'Content-Length', 'Response_Headers', 'URL', 'Transfer-Encoding', 'Content-Type', 'BodySize','Referer']
     '''
     print usage
     CONTINUE('Are you ready to start analyzing process?')
@@ -1126,7 +1127,6 @@ if test=="Avoid large objects":
     report_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.txt')==True],'Choose rule result file:')
     pl_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.csv')==True],'Choose PL file:')
     third_parties_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.txt')==True],'Choose 3rd parties file:')
-    td_parties=open(third_parties_file,'r').read().lower()
     result=GET_ALL_RECEIVED_OBJECT_FROM_HAR(har_file)
     rules_result=open(report_file,'r').read().lower()
     packet_list=open(pl_file,'r').read().lower()
@@ -1137,12 +1137,7 @@ if test=="Avoid large objects":
         if r['URL'].lower() in rules_result:
             in_rule=True
         r.update({'Is_In_Rule':in_rule})
-        in_td_parties=False
-        try:
-            if get_tld(r['URL']).lower() in td_parties:
-                in_td_parties=True
-        except Exception, e:
-            in_td_parties=str(e)
+        in_td_parties=IS_IN_3D_PARTIES(third_parties_file,get_tld(r['URL']).lower(),r['Referer'])
         r.update({'Is_in_3d_Party':in_td_parties})
         in_pl=False
         parsed = urlparse(r['URL'])
@@ -1168,7 +1163,7 @@ if test=="Avoid image scaling in HTML":
     4)	Run NV analyzing and save PL file as *csv (Open *.pcap file with Wireshark go to : File - Export Packet Dissections - As CSV)
     5)	Save NV rule's report as *.csv in report.txt file ("Desktop" for Desktop mode and "iPhone" for mobile)
     6)	Open created result file with Excel and analyze the result according rul'e defenition, result file contains the following columns:
-    ['Status', 'Content-Length', 'Response_Headers', 'URL', 'Transfer-Encoding', 'Content-Type', 'BodySize']
+    ['Status', 'Content-Length', 'Response_Headers', 'URL', 'Transfer-Encoding', 'Content-Type', 'BodySize','Referer']
     '''
     print usage
     CONTINUE('Are you ready to start analyzing process?')
@@ -1179,7 +1174,6 @@ if test=="Avoid image scaling in HTML":
     report_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.txt')==True],'Choose rule result file:')
     pl_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.csv')==True],'Choose PL file:')
     third_parties_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.txt')==True],'Choose 3rd parties file:')
-    td_parties=open(third_parties_file,'r').read().lower()
     rules_result=open(report_file,'r').read().lower()
     packet_list=open(pl_file,'r').read().lower()
     result_list=[]
@@ -1189,12 +1183,7 @@ if test=="Avoid image scaling in HTML":
         if r['HTML_URL'].lower() in rules_result:
             in_rule=True
         r.update({'Is_In_Rule':in_rule})
-        in_td_parties=False
-        try:
-            if get_tld(r['HTML_URL']).lower() in td_parties:
-                in_td_parties=True
-        except Exception, e:
-            in_td_parties=str(e)
+        in_td_parties=IS_IN_3D_PARTIES(third_parties_file,get_tld(r['HTML_URL']).lower())
         r.update({'Is_in_3d_Party':in_td_parties})
         in_pl=False
         parsed = urlparse(r['HTML_URL'])
