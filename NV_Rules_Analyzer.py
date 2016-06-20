@@ -441,6 +441,7 @@ RULES=[
     'Make fewer HTTP requests',
     'Avoid large objects',
     'Avoid referencing images in stylesheets',
+    'Avoid URL redirects',
     'Avoid image scaling in HTML'
     ]
 test=CHOOSE_OPTION_FROM_LIST_1(RULES, 'Choose Rule you would like to test:')
@@ -455,6 +456,7 @@ if test=='*** Cleaner ***':
                'Mi_Functions.py',
                'NV_Rules_Analyzer.py',
                'README.md',
+               '1.jpg',
                'TrafficTypes.py']
     known_ext=['.pyc']
     CONTINUE('All files except: '+str(lo_lagaat)+' will be deleted, to continue?')
@@ -1198,6 +1200,55 @@ if test=="Avoid image scaling in HTML":
     WRITE_DICTS_TO_CSV(result_file,result_list)
     SPEC_PRINT(['Your result file is ready!!!','File name: '+result_file])
 
+
+
+
+
+if test=='Avoid URL redirects':
+    usage='''### USAGE ###
+    1)	Use Chrome
+    2)	Close all tabs except NV
+    3)	Open a new TAB with "Developers Tools" opened
+    4)	Start Emulation on NV tab
+    5)	Browse to some site on second TAB
+    6)	Stop NV once site is loaded
+    7)	On second TAB stop recording and use "Copy all as HAR" on "Network" and save all the content into *.har file
+    8)	Run NV analyzing and save PL file as *csv (Open *.pcap file with Wireshark go to : File - Export Packet Dissections - As CSV)
+    9)	Save NV rule's report as *.csv in report.txt file ("Desktop" for Desktop mode and "iPhone" for mobile)
+    10)	Open created result file with Excel and analyze the result according rul'e defenition, result file contains the following columns:
+    ['Status', 'ParsedDomain', 'Is_In_Rule', 'URL', 'Is_In_PL', 'Host', 'Referer', 'Is_in_3d_Party', 'Content-Type', 'Parsed_URL_Path', 'Size']
+    '''
+    print usage
+    CONTINUE('Are you ready to start analyzing process?')
+    har_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.har')==True],'Choose *har file:')
+    report_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.txt')==True],'Choose rule result file:')
+    pl_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.csv')==True],'Choose PL file:')
+    third_parties_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.txt')==True],'Choose 3rd parties file:')
+    result=GET_ALL_DOMAINS(har_file)
+    rules_result=open(report_file,'r').readlines()
+    rules_result=[line.strip().lower() for line in rules_result if line.endswith('.css')==False] #ignore .css lines
+    packet_list=open(pl_file,'r').read().lower()
+    result_list=[]
+    for r in result:
+        in_rule=False
+        if r['URL'].lower() in rules_result:
+            in_rule=True
+        r.update({'Is_In_Rule':in_rule})
+        in_td_parties=IS_IN_3D_PARTIES(third_parties_file,get_tld(r['URL']).lower(),r['Referer'])
+        r.update({'Is_in_3d_Party':in_td_parties})
+
+        in_pl=False
+        parsed = urlparse(r['URL'])
+        url_path=parsed.path.lower()
+        if url_path in packet_list:
+            in_pl=True
+        r.update({'Parsed_URL_Path':url_path})
+        r.update({'Is_In_PL':in_pl})
+        print r
+        result_list.append(r)
+    result_file=har_file.replace('.har','.csv')
+    WRITE_DICTS_TO_CSV(result_file,result_list)
+    SPEC_PRINT(['Your result file is ready!!!','File name: '+result_file])
 
 
 
