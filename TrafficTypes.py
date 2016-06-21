@@ -14,7 +14,7 @@ from selenium.webdriver.common.keys import Keys
 
 
 
-def OPEN_WEB_SITE_SELENIUM(url,proxy=None,timeout=5*60):
+def OPEN_WEB_SITE_SELENIUM(url,proxy=None,timeout=5*60,SAVE_SCREENSHOT=False,return_source=False, load_delay=0):
     try:
         print '... Starting Firefox browser: '+url
         if proxy!=None:
@@ -38,7 +38,12 @@ def OPEN_WEB_SITE_SELENIUM(url,proxy=None,timeout=5*60):
         driver.set_page_load_timeout(timeout)
         start_time=time.time()
         driver.get(url)
+        time.sleep(load_delay)
         current_url=driver.current_url
+
+
+        page_source=driver.page_source
+
         stop_time=time.time()
         if SAVE_SCREENSHOT==True:
             screenshoot_name=str(time.time()).split('.')[0]+'_'+url.split('//')[-1].replace('.','_').replace('/','_')+'.jpg'
@@ -49,7 +54,10 @@ def OPEN_WEB_SITE_SELENIUM(url,proxy=None,timeout=5*60):
         if 'linux' in platform.system().lower():
             display.stop()
             os.system('sudo killall -9 firefox')
-        return {'Page_Load_Time[sec]':stop_time-start_time,'Final_URL':current_url,'ScreenshootName':screenshoot_name}
+        if return_source==True:
+            return {'Page_Load_Time[sec]':stop_time-start_time,'Final_URL':current_url,'ScreenshootName':screenshoot_name,'Page_Source':page_source}
+        if return_source==False:
+            return {'Page_Load_Time[sec]':stop_time-start_time,'Final_URL':current_url,'ScreenshootName':screenshoot_name}
     except Exception,e:
         print 'Exception: '+str(e)
         driver.close()
@@ -79,6 +87,7 @@ def HTTP_GET_SITE(site_url,loops_number,proxies=None,request_headers=None,delay=
                 content_length_found=False
                 size=len(r.content)
                 sizes.append(size)
+
             stop_time=time.time()
             dif=stop_time-start_time
 

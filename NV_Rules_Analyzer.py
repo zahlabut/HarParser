@@ -15,6 +15,66 @@ from selenium import webdriver
 import urllib
 import shutil,os,platform
 import urllib2
+import htmlmin
+
+
+
+
+def IS_MINIFY_WITH_SELENIUM(url,load_delay=0):
+    page_source=OPEN_WEB_SITE_SELENIUM(url,return_source=True,load_delay=load_delay)['Page_Source']
+    relevant_line=None
+    message=None
+    shrunk_percentage=None
+    for line in page_source.split('\n'):
+        if 'Shrunk' in line:
+            relevant_line=line.strip()
+    if relevant_line!=None:
+        message=relevant_line.split('"status-url">')[-1].split('<')[0]
+        shrunk_percentage=message.split('(')[-1].split('%')[0]
+    print {"Shrunk_Message":message,"Shrunk_Percentage":shrunk_percentage}
+    return {"Shrunk_Message":message,"Shrunk_Percentage":shrunk_percentage}
+
+
+def IS_MINIFY(content): #This function based Python Only, compression is not perfect :(
+    try:
+        if content!=None:
+            if len(content)!=0 and 'unicode' not in str(type(content)):
+                content=unicode(content,'utf-8','ignore')
+                size_before=len(content)
+                content=htmlmin.minify(content)
+                # content=htmlmin.minify(content,
+                #                        remove_comments=True,
+                #                        remove_empty_space=True,
+                #                        remove_all_empty_space=True,
+                #                        remove_optional_attribute_quotes=True,
+                #                        reduce_boolean_attributes=True,
+                #                        reduce_empty_attributes=True,
+                #                        keep_pre=False)
+                size_after=len(content)
+                return {'Original_Size':size_before,'Minify_Size':size_after,"Compressed_Percantage":100*(size_before-size_after)/size_before}
+            if len(content)!=0 and 'unicode' in str(type(content)):
+                size_before=len(content)
+                content=htmlmin.minify(content)
+                # content=htmlmin.minify(content,
+                #                        remove_comments=True,
+                #                        remove_empty_space=True,
+                #                        remove_all_empty_space=True,
+                #                        remove_optional_attribute_quotes=True,
+                #                        reduce_boolean_attributes=True,
+                #                        reduce_empty_attributes=True,
+                #                        keep_pre=False)
+                size_after=len(content)
+                return {'Original_Size':len(content),'Minify_Size':size_after,"Compressed_Percantage":100*(size_before-size_after)/size_before}
+        else:
+            return {'Original_Size':None,'Minify_Size':None,"Compressed_Percantage":None}
+    except Exception,e:
+        return {'Original_Size':'ERROR in IS_MINIFY '+str(e),'Minify_Size':'ERROR in IS_MINIFY '+str(e),"Compressed_Percantage":'ERROR in IS_MINIFY '+str(e)}
+
+def GET_TLD(url):
+    try:
+        return get_tld(url)
+    except Exception,e:
+        return 'Exception in GET_TLD: '+str(e)
 
 def IS_IN_3D_PARTIES(td_file,domain,referer=None):
     td_parties=open(td_file,'r').read().lower().replace('''\\\\.''','.')
@@ -282,7 +342,7 @@ def GET_ALL_COOKIES(har_file):
                          'Response_Cookie_Length':response_cookie_len,
                          'Host':host,
                          'Referer':referer,
-                         'ParsedDomain':get_tld(item['request']['url'])})
+                         'ParsedDomain':GET_TLD(item['request']['url'])})
     return all_cookies
 
 def GET_ALL_DOMAINS(har_file):
@@ -304,7 +364,7 @@ def GET_ALL_DOMAINS(har_file):
                 referer=h['value']
                 break
         try:
-            parsed_domain=get_tld(item['request']['url'])
+            parsed_domain=GET_TLD(item['request']['url'])
         except Exception,e:
             parsed_domain=str(e)
 
@@ -419,7 +479,42 @@ def GET_ALL_IMAGE_SIZES_HTML_AND_REAL(url):
 
 
 
+def GET_ALL_RECEIVED_TEXT_RESOURCES_CHECK_MINIFY(har_file_with_content):
+    data_to_return_list=[]
+    data=open(har_file_with_content,'r').read().decode('utf-8','ignore')
+    data = json.loads(data)
+    entries=data['log']['entries']
+    for item in entries:
+        content=None
+        referer=None
+        for h in item['request']['headers']:
+            if 'referer' == h['name'].lower():
+                referer=h['value']
+                break
+        if 'text' in item['response']['content'].keys():
+            content=item['response']['content']['text']
 
+        content_type=None
+        for header in item['response']['headers']:
+            if header['name']=='Content-Type' and len(header['value'].lower())>0:
+                content_type=header['value']
+
+        if 'image' not in str(content_type).lower():
+            minify_result=IS_MINIFY_WITH_SELENIUM('https://minifyhtml.io/?q='+item['request']['url'])
+            if minify_result['Shrunk_Message'] == None:
+                minify_result=IS_MINIFY_WITH_SELENIUM('https://minifyhtml.io/?q='+item['request']['url'],load_delay=30)
+        else:
+            minify_result={"Shrunk_Message":None,"Shrunk_Percentage":None}
+
+        data_to_return_list.append({'URL':item['request']['url'],
+                                    'Content-Type':content_type,
+                                    'HAR_ResourceSize':item['response']['content']['size'],
+                                    'Status':item['response']['status'],
+                                    'Referer':referer,
+                                    'Shrunk_Message':minify_result['Shrunk_Message'],
+                                    'Shrunk_Percentage':minify_result['Shrunk_Percentage'],
+                                    })
+    return data_to_return_list
 
 
 
@@ -442,6 +537,7 @@ RULES=[
     'Avoid large objects',
     'Avoid referencing images in stylesheets',
     'Avoid URL redirects',
+    'Minify your textual components',
     'Avoid image scaling in HTML'
     ]
 test=CHOOSE_OPTION_FROM_LIST_1(RULES, 'Choose Rule you would like to test:')
@@ -600,7 +696,7 @@ if test=='Compress Components':
             in_rule=True
         d.update({'Is_In_Rule':in_rule})
 
-        in_td_parties=IS_IN_3D_PARTIES(third_parties_file,get_tld(d['URL']),d['Referer'])
+        in_td_parties=IS_IN_3D_PARTIES(third_parties_file,GET_TLD(d['URL']),d['Referer'])
 
         d.update({'Is_in_3d_Party':in_td_parties})
         in_pl=False
@@ -767,11 +863,12 @@ if test=='HTTP Client for "Avoid 4xx and 5xx status codes" rule testing':
     legal_rfc_codes=[100, 101, 200, 201, 202, 203, 204, 205, 206, 300, 301, 302, 303, 304, 305, 306, 307, 400, 401, 402, 403, 404, 405, 406, 407, 408, 409, 410, 411, 412, 413, 414, 415, 416, 417, 500, 501, 502, 503, 504, 505]
     codes_to_check=(i for i in range(0,1001)) #Generator
     codes_to_check=[100, 101, 102, 200, 201, 202, 203, 204, 205, 206, 207, 208, 226, 300, 301, 302, 303, 304, 305, 306, 307, 308, 404, 400, 401, 402, 403, 404, 405, 406, 407, 408, 409, 410, 411, 412, 413, 414, 415, 416, 417, 418, 421, 422, 423, 424, 426, 428, 429, 431, 451, 500, 501, 502, 503, 504, 505, 506, 507, 508, 510, 511, 103, 420, 420, 450, 498, 499, 499, 509, 530, 440, 449, 451, 444, 495, 496, 497, 499, 520, 521, 522, 523, 524, 525, 526]
+    #codes_to_check=[300,301,302,303,304,305,306,307,308]
     urls=[]
     for i in codes_to_check:
         urls.append('http://'+server_ip+':'+server_port+'/return_code='+str(i)+'/'+str(i)+'.jpg')
     for url in urls:
-        print HTTP_GET_SITE(url,10)
+        print HTTP_GET_SITE(url,int(loop_per_request))
 
     codes_to_check.insert(0,'Sent HTTP Requests ('+str(loop_per_request)+' requests per status code) are:')
     codes_to_check=[str(i) for i in codes_to_check]
@@ -896,7 +993,7 @@ if test=='Add long term headers expiration dates':
             in_rule=True
         d.update({'Is_In_Rule':in_rule})
 
-        in_td_parties=IS_IN_3D_PARTIES(third_parties_file,get_tld(d['Key ']),d['Referer'])
+        in_td_parties=IS_IN_3D_PARTIES(third_parties_file,GET_TLD(d['Key ']),d['Referer'])
         d.update({'Is_in_3d_Party':in_td_parties})
 
         in_pl=False
@@ -981,7 +1078,7 @@ if test=='Use a Content Delivery Network (CDN)':
             in_rule=True
         d.update({'Is_In_Rule':in_rule})
 
-        in_td_parties=IS_IN_3D_PARTIES(third_parties_file,get_tld(d['URL']).lower(), d['Referer'])
+        in_td_parties=IS_IN_3D_PARTIES(third_parties_file,GET_TLD(d['URL']).lower(), d['Referer'])
         d.update({'Is_in_3d_Party':in_td_parties})
 
         in_pl=False
@@ -1030,7 +1127,7 @@ if test=="Don't download the same data twice":
             in_rule=True
         r.update({'Is_In_Rule':in_rule})
 
-        in_td_parties=IS_IN_3D_PARTIES(third_parties_file,get_tld(r['URL']).lower(),r['Referer'])
+        in_td_parties=IS_IN_3D_PARTIES(third_parties_file,GET_TLD(r['URL']).lower(),r['Referer'])
         r.update({'Is_in_3d_Party':in_td_parties})
 
 
@@ -1087,7 +1184,7 @@ if test=="Make fewer HTTP requests":
         if r['URL'].lower() in rules_result:
             in_rule=True
         r.update({'Is_In_Rule':in_rule})
-        in_td_parties=IS_IN_3D_PARTIES(third_parties_file,get_tld(r['URL']).lower(),r['Referer'])
+        in_td_parties=IS_IN_3D_PARTIES(third_parties_file,GET_TLD(r['URL']).lower(),r['Referer'])
         r.update({'Is_in_3d_Party':in_td_parties})
 
         in_pl=False
@@ -1139,7 +1236,7 @@ if test=="Avoid large objects":
         if r['URL'].lower() in rules_result:
             in_rule=True
         r.update({'Is_In_Rule':in_rule})
-        in_td_parties=IS_IN_3D_PARTIES(third_parties_file,get_tld(r['URL']).lower(),r['Referer'])
+        in_td_parties=IS_IN_3D_PARTIES(third_parties_file,GET_TLD(r['URL']).lower(),r['Referer'])
         r.update({'Is_in_3d_Party':in_td_parties})
         in_pl=False
         parsed = urlparse(r['URL'])
@@ -1185,7 +1282,7 @@ if test=="Avoid image scaling in HTML":
         if r['HTML_URL'].lower() in rules_result:
             in_rule=True
         r.update({'Is_In_Rule':in_rule})
-        in_td_parties=IS_IN_3D_PARTIES(third_parties_file,get_tld(r['HTML_URL']).lower())
+        in_td_parties=IS_IN_3D_PARTIES(third_parties_file,GET_TLD(r['HTML_URL']).lower())
         r.update({'Is_in_3d_Party':in_td_parties})
         in_pl=False
         parsed = urlparse(r['HTML_URL'])
@@ -1216,6 +1313,7 @@ if test=='Avoid URL redirects':
     8)	Run NV analyzing and save PL file as *csv (Open *.pcap file with Wireshark go to : File - Export Packet Dissections - As CSV)
     9)	Save NV rule's report as *.csv in report.txt file ("Desktop" for Desktop mode and "iPhone" for mobile)
     10)	Open created result file with Excel and analyze the result according rul'e defenition, result file contains the following columns:
+    Note: as for now only 301 and 302 statuses are handled
     ['Status', 'ParsedDomain', 'Is_In_Rule', 'URL', 'Is_In_PL', 'Host', 'Referer', 'Is_in_3d_Party', 'Content-Type', 'Parsed_URL_Path', 'Size']
     '''
     print usage
@@ -1234,7 +1332,7 @@ if test=='Avoid URL redirects':
         if r['URL'].lower() in rules_result:
             in_rule=True
         r.update({'Is_In_Rule':in_rule})
-        in_td_parties=IS_IN_3D_PARTIES(third_parties_file,get_tld(r['URL']).lower(),r['Referer'])
+        in_td_parties=IS_IN_3D_PARTIES(third_parties_file,GET_TLD(r['URL']).lower(),r['Referer'])
         r.update({'Is_in_3d_Party':in_td_parties})
 
         in_pl=False
@@ -1250,5 +1348,56 @@ if test=='Avoid URL redirects':
     WRITE_DICTS_TO_CSV(result_file,result_list)
     SPEC_PRINT(['Your result file is ready!!!','File name: '+result_file])
 
+
+
+
+
+
+
+if test=="Minify your textual components":
+    usage='''### USAGE ###
+    1)	Use Chrome
+    2)	Close all tabs except NV
+    3)	Open a new TAB with "Developers Tools" opened
+    4)	Start Emulation on NV tab
+    5)	Browse to some site on second TAB
+    6)	Stop NV once site is loaded
+    7)	On second TAB stop recording and use "Save as HAR with content" on "Network" and save all the content into *.har file
+    8)	Run NV analyzing and save PL file as *csv (Open *.pcap file with Wireshark go to : File - Export Packet Dissections - As CSV)
+    9)	Save NV rule's report as *.csv in report.txt file ("Desktop" for Desktop mode and "iPhone" for mobile)
+    10)	Open created result file with Excel and analyze the result according rul'e defenition, result file contains the following columns:
+    ['Status', 'Minify_Size', 'URL', 'Is_In_PL', 'Compressed_Percantage', 'Referer', 'Original_Size', 'Is_in_3d_Party', 'HAR_ResourceSize', 'Content-Type', 'Parsed_URL_Path', 'Is_In_Rule']
+    '''
+    print usage
+    CONTINUE('Are you ready to start analyzing process?')
+    har_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.har')==True],'Choose *har file:')
+    report_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.txt')==True],'Choose rule result file:')
+    pl_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.csv')==True],'Choose PL file:')
+    third_parties_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.txt')==True],'Choose 3rd parties file:')
+    result=GET_ALL_RECEIVED_TEXT_RESOURCES_CHECK_MINIFY(har_file)
+    rules_result=open(report_file,'r').readlines()
+    rules_result=[line.strip().lower() for line in rules_result if line.endswith('.css')==False] #ignore .css lines
+    packet_list=open(pl_file,'r').read().lower()
+    result_list=[]
+    for r in result:
+        in_rule=False
+        if r['URL'].lower() in rules_result:
+            in_rule=True
+        r.update({'Is_In_Rule':in_rule})
+        in_td_parties=IS_IN_3D_PARTIES(third_parties_file,GET_TLD(r['URL']).lower(),r['Referer'])
+        r.update({'Is_in_3d_Party':in_td_parties})
+
+        in_pl=False
+        parsed = urlparse(r['URL'])
+        url_path=parsed.path.lower()
+        if url_path in packet_list:
+            in_pl=True
+        r.update({'Parsed_URL_Path':url_path})
+        r.update({'Is_In_PL':in_pl})
+        print r
+        result_list.append(r)
+    result_file=har_file.replace('.har','.csv')
+    WRITE_DICTS_TO_CSV(result_file,result_list)
+    SPEC_PRINT(['Your result file is ready!!!','File name: '+result_file])
 
 
