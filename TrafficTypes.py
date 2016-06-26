@@ -14,6 +14,7 @@ from selenium.webdriver.common.keys import Keys
 
 
 
+
 def OPEN_WEB_SITE_SELENIUM(url,proxy=None,timeout=5*60,SAVE_SCREENSHOT=False,return_source=False, load_delay=0):
     try:
         print '... Starting Firefox browser: '+url
@@ -50,7 +51,7 @@ def OPEN_WEB_SITE_SELENIUM(url,proxy=None,timeout=5*60,SAVE_SCREENSHOT=False,ret
             driver.get_screenshot_as_file(screenshoot_name)
         if SAVE_SCREENSHOT==False:
             screenshoot_name=None
-        driver.close()
+        driver.quit()
         if 'linux' in platform.system().lower():
             display.stop()
             os.system('sudo killall -9 firefox')

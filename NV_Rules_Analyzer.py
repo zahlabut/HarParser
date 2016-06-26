@@ -20,8 +20,26 @@ import htmlmin
 
 
 
-def IS_MINIFY_WITH_SELENIUM(url,load_delay=0):
-    page_source=OPEN_WEB_SITE_SELENIUM(url,return_source=True,load_delay=load_delay)['Page_Source']
+
+
+
+def IS_MINIFY_WITH_SELENIUM(url,sel_timeout=60):
+    print url
+    driver = webdriver.Firefox()
+    driver.delete_all_cookies()
+    driver.set_page_load_timeout(sel_timeout)
+    start_time=time.time()
+    iterupt_time=start_time+30 #timeout 30
+    driver.get(url)
+    current_url=driver.current_url
+    exit_while=False
+    while exit_while==False:
+        page_source=driver.page_source
+        if "Shrunk it down by" in page_source or "Could not shrink down any further" in page_source or time.time()>iterupt_time:
+            exit_while=True
+        time.sleep(1)
+
+    driver.quit()
     relevant_line=None
     message=None
     shrunk_percentage=None
@@ -477,6 +495,48 @@ def GET_ALL_IMAGE_SIZES_HTML_AND_REAL(url):
     return lis
 
 
+def GET_ALL_RECEIVED_OBJECT_SAVE_VARY_CHECK_QUERY(har_file):
+    data_to_return_list=[]
+    data=open(har_file,'r').read().decode('utf-8','ignore')
+    data = json.loads(data)
+    entries=data['log']['entries']
+    for item in entries:
+        content_type=None
+        transfer_encoding=None
+        content_length=None
+        referer=None
+        vary=None
+        content_encoding=None
+        url_quary=None
+        for header in item['response']['headers']:
+            if header['name'].lower()=='content-type':
+                content_type=header['value']
+            if header['name'].lower()=='transfer-encoding':
+                transfer_encoding=header['value']
+            if header['name'].lower()=='content-length':
+                content_length=header['value']
+            if header['name'].lower()=='vary':
+                vary=header['value']
+            if header['name'].lower()=='content-encoding':
+                content_encoding=header['value']
+        for header in item['request']['headers']:
+            if header['name'].lower()=='referer':
+                referer=header['value']
+        parsed_url=urlparse(item['request']['url'])
+        url_quary=parsed_url.query
+
+        data_to_return_list.append({'URL':item['request']['url'],
+                                    'Content-Type':content_type,
+                                    'Referer':referer,
+                                    'Transfer-Encoding':transfer_encoding,
+                                    'Content-Length':content_length,
+                                    'BodySize':item['response']['bodySize'],
+                                    'Content-Encoding':content_encoding,
+                                    'Vary':vary,
+                                    'URL_Quary':url_quary,
+                                    'Status':item['response']['status']})
+    return data_to_return_list
+
 
 
 def GET_ALL_RECEIVED_TEXT_RESOURCES_CHECK_MINIFY(har_file_with_content):
@@ -501,8 +561,6 @@ def GET_ALL_RECEIVED_TEXT_RESOURCES_CHECK_MINIFY(har_file_with_content):
 
         if 'image' not in str(content_type).lower():
             minify_result=IS_MINIFY_WITH_SELENIUM('https://minifyhtml.io/?q='+item['request']['url'])
-            if minify_result['Shrunk_Message'] == None:
-                minify_result=IS_MINIFY_WITH_SELENIUM('https://minifyhtml.io/?q='+item['request']['url'],load_delay=30)
         else:
             minify_result={"Shrunk_Message":None,"Shrunk_Percentage":None}
 
@@ -538,7 +596,8 @@ RULES=[
     'Avoid referencing images in stylesheets',
     'Avoid URL redirects',
     'Minify your textual components',
-    'Avoid image scaling in HTML'
+    'Avoid image scaling in HTML',
+    'Leverage proxy caching'
     ]
 test=CHOOSE_OPTION_FROM_LIST_1(RULES, 'Choose Rule you would like to test:')
 
@@ -1376,7 +1435,7 @@ if test=="Minify your textual components":
     third_parties_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.txt')==True],'Choose 3rd parties file:')
     result=GET_ALL_RECEIVED_TEXT_RESOURCES_CHECK_MINIFY(har_file)
     rules_result=open(report_file,'r').readlines()
-    rules_result=[line.strip().lower() for line in rules_result if line.endswith('.css')==False] #ignore .css lines
+    rules_result=[line.strip().lower() for line in rules_result]
     packet_list=open(pl_file,'r').read().lower()
     result_list=[]
     for r in result:
@@ -1401,3 +1460,49 @@ if test=="Minify your textual components":
     SPEC_PRINT(['Your result file is ready!!!','File name: '+result_file])
 
 
+
+if test=="Leverage proxy caching":
+    usage='''### USAGE ###
+    1)	Use Chrome
+    2)	Close all tabs except NV
+    3)	Open a new TAB with "Developers Tools" opened
+    4)	Start Emulation on NV tab
+    5)	Browse to some site on second TAB
+    6)	Stop NV once site is loaded
+    7)	On second TAB stop recording and use "Save as HAR with content" on "Network" and save all the content into *.har file
+    8)	Run NV analyzing and save PL file as *csv (Open *.pcap file with Wireshark go to : File - Export Packet Dissections - As CSV)
+    9)	Save NV rule's report as *.csv in report.txt file ("Desktop" for Desktop mode and "iPhone" for mobile)
+    10)	Open created result file with Excel and analyze the result according rul'e defenition, result file contains the following columns:
+    ['Status', 'Content-Length', 'Is_In_Rule', 'Content-Encoding', 'Transfer-Encoding', 'Vary', 'Is_In_PL', 'URL', 'Referer', 'Is_in_3d_Party', 'BodySize', 'Content-Type', 'Parsed_URL_Path', 'URL_Quary']
+    '''
+    print usage
+    CONTINUE('Are you ready to start analyzing process?')
+    har_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.har')==True],'Choose *har file:')
+    report_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.txt')==True],'Choose rule result file:')
+    pl_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.csv')==True],'Choose PL file:')
+    third_parties_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.txt')==True],'Choose 3rd parties file:')
+    result=GET_ALL_RECEIVED_OBJECT_SAVE_VARY_CHECK_QUERY(har_file)
+    rules_result=open(report_file,'r').readlines()
+    rules_result=[item.strip().lower() for item in rules_result]
+    packet_list=open(pl_file,'r').read().lower()
+    result_list=[]
+    for r in result:
+        in_rule=False
+        if r['URL'].lower() in rules_result:
+            in_rule=True
+        r.update({'Is_In_Rule':in_rule})
+        in_td_parties=IS_IN_3D_PARTIES(third_parties_file,GET_TLD(r['URL']).lower(),r['Referer'])
+        r.update({'Is_in_3d_Party':in_td_parties})
+
+        in_pl=False
+        parsed = urlparse(r['URL'])
+        url_path=parsed.path.lower()
+        if url_path in packet_list:
+            in_pl=True
+        r.update({'Parsed_URL_Path':url_path})
+        r.update({'Is_In_PL':in_pl})
+        print r
+        result_list.append(r)
+    result_file=har_file.replace('.har','.csv')
+    WRITE_DICTS_TO_CSV(result_file,result_list)
+    SPEC_PRINT(['Your result file is ready!!!','File name: '+result_file])
