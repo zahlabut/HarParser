@@ -18,10 +18,19 @@ import urllib2
 import htmlmin
 
 
-
-
-
-
+def GET_ALL_SCRIPS_FROM_HEAD_HTML_TAG(data):
+    if data==None:
+        return [{'ScriptSource':None,'IsScriptInHead':None,'ScriptTag':None}]
+    soup = BeautifulSoup.BeautifulSOAP(data)
+    head_scripts=[]
+    head=str(soup.findAll('head')).lower()
+    for s in soup.findAll('script',{"src":True}):
+        is_in_head=False
+        script_source=s.get('src')
+        if str(s) in head:#script_source.decode('utf-8','ignore').lower() in head.decode('utf-8','ignore'):
+            is_in_head=True
+        head_scripts.append({'ScriptSource':script_source,'IsScriptInHead':is_in_head,'ScriptTag':str(s).strip()})
+    return head_scripts
 
 def IS_MINIFY_WITH_SELENIUM(url,sel_timeout=60):
     print url
@@ -51,7 +60,6 @@ def IS_MINIFY_WITH_SELENIUM(url,sel_timeout=60):
         shrunk_percentage=message.split('(')[-1].split('%')[0]
     print {"Shrunk_Message":message,"Shrunk_Percentage":shrunk_percentage}
     return {"Shrunk_Message":message,"Shrunk_Percentage":shrunk_percentage}
-
 
 def IS_MINIFY(content): #This function based Python Only, compression is not perfect :(
     try:
@@ -494,7 +502,6 @@ def GET_ALL_IMAGE_SIZES_HTML_AND_REAL(url):
     os.remove(os.path.abspath('image'))
     return lis
 
-
 def GET_ALL_RECEIVED_OBJECT_SAVE_VARY_CHECK_QUERY(har_file):
     data_to_return_list=[]
     data=open(har_file,'r').read().decode('utf-8','ignore')
@@ -537,8 +544,6 @@ def GET_ALL_RECEIVED_OBJECT_SAVE_VARY_CHECK_QUERY(har_file):
                                     'Status':item['response']['status']})
     return data_to_return_list
 
-
-
 def GET_ALL_RECEIVED_TEXT_RESOURCES_CHECK_MINIFY(har_file_with_content):
     data_to_return_list=[]
     data=open(har_file_with_content,'r').read().decode('utf-8','ignore')
@@ -574,7 +579,42 @@ def GET_ALL_RECEIVED_TEXT_RESOURCES_CHECK_MINIFY(har_file_with_content):
                                     })
     return data_to_return_list
 
+def GET_ALL_RECEIVED_HTMLS_AND_SCRIPTS_INFO(har_file_with_content):
+    data_to_return_list=[]
+    data=open(har_file_with_content,'r').read().decode('utf-8','ignore')
+    data = json.loads(data)
+    entries=data['log']['entries']
+    for item in entries:
+        content=None
+        referer=None
+        for h in item['request']['headers']:
+            if 'referer' == h['name'].lower():
+                referer=h['value']
+                break
+        if 'text' in item['response']['content'].keys():
+            content=item['response']['content']['text']
 
+        content_type=None
+        for header in item['response']['headers']:
+            if header['name']=='Content-Type' and len(header['value'].lower())>0:
+                content_type=header['value']
+
+        if 'html' in str(content_type).lower():
+            scripts_result=GET_ALL_SCRIPS_FROM_HEAD_HTML_TAG(content)
+            for script in scripts_result:
+                data_to_return_list.append({'URL':item['request']['url'],
+                                            'Content-Type':content_type,
+                                            'HAR_ResourceSize':item['response']['content']['size'],
+                                            'Status':item['response']['status'],
+                                            'Referer':referer,
+                                            'IsScriptInHead':script['IsScriptInHead'],
+                                            'ScriptTag':script['ScriptTag'],
+                                            'ScriptSource':script['ScriptSource']
+                                            })
+
+
+
+    return data_to_return_list
 
 TOOL_DESCRIPTION=['NV_Rules_Analyser_Tool','V 1.0','Designed by: Arkady','Goodbye world!!!']
 SPEC_PRINT(TOOL_DESCRIPTION)
@@ -597,7 +637,8 @@ RULES=[
     'Avoid URL redirects',
     'Minify your textual components',
     'Avoid image scaling in HTML',
-    'Leverage proxy caching'
+    'Leverage proxy caching',
+    'Avoid loading javascripts in the head section'
     ]
 test=CHOOSE_OPTION_FROM_LIST_1(RULES, 'Choose Rule you would like to test:')
 
@@ -1506,3 +1547,62 @@ if test=="Leverage proxy caching":
     result_file=har_file.replace('.har','.csv')
     WRITE_DICTS_TO_CSV(result_file,result_list)
     SPEC_PRINT(['Your result file is ready!!!','File name: '+result_file])
+
+
+
+
+if test=="Avoid loading javascripts in the head section":
+    usage='''### USAGE ###
+    1)	Use Chrome
+    2)	Close all tabs except NV
+    3)	Open a new TAB with "Developers Tools" opened
+    4)	Start Emulation on NV tab
+    5)	Browse to some site on second TAB
+    6)	Stop NV once site is loaded
+    7)	On second TAB stop recording and use "Save as HAR with content" on "Network" and save all the content into *.har file
+    8)	Run NV analyzing and save PL file as *csv (Open *.pcap file with Wireshark go to : File - Export Packet Dissections - As CSV)
+    9)	Save NV rule's report as *.csv in report.txt file ("Desktop" for Desktop mode and "iPhone" for mobile)
+    10)	Open created result file with Excel and analyze the result according rul'e defenition, result file contains the following columns:
+    ['Status', 'Content-Length', 'Is_In_Rule', 'Content-Encoding', 'Transfer-Encoding', 'Vary', 'Is_In_PL', 'URL', 'Referer', 'Is_in_3d_Party', 'BodySize', 'Content-Type', 'Parsed_URL_Path', 'URL_Quary']
+    '''
+    print usage
+    CONTINUE('Are you ready to start analyzing process?')
+    har_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.har')==True],'Choose *har file:')
+    report_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.txt')==True],'Choose rule result file:')
+    pl_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.csv')==True],'Choose PL file:')
+    third_parties_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.txt')==True],'Choose 3rd parties file:')
+    result=GET_ALL_RECEIVED_HTMLS_AND_SCRIPTS_INFO(har_file)
+    rules_result_html=open(report_file,'r').readlines()
+    rules_result_html=[item.strip().lower().split('section of ')[-1] for item in rules_result_html if 'Scripts found in the head section of' in item]
+    rules_result_js=open(report_file,'r').readlines()
+    rules_result_js=[item.strip().lower() for item in rules_result_js if 'Scripts found in the head section of' not in item]
+    packet_list=open(pl_file,'r').read().lower()
+    result_list=[]
+    for r in result:
+        js_in_rule=False
+        if r['ScriptSource']!=None:
+            if r['ScriptSource'].lower() in str(rules_result_js):
+                js_in_rule=True
+        r.update({'JS_In_Rule':js_in_rule})
+        html_in_rule=False
+        if r['URL'].lower() in rules_result_html:
+            html_in_rule=True
+        r.update({'HTML_In_Rule':html_in_rule})
+        in_td_parties=IS_IN_3D_PARTIES(third_parties_file,GET_TLD(r['URL']).lower(),r['Referer'])
+        r.update({'Is_in_3d_Party':in_td_parties})
+        in_pl=False
+        parsed = urlparse(r['URL'])
+        url_path=parsed.path.lower()
+        if url_path in packet_list:
+            in_pl=True
+        r.update({'Parsed_URL_Path':url_path})
+        r.update({'Is_In_PL':in_pl})
+        print r
+        result_list.append(r)
+    result_file=har_file.replace('.har','.csv')
+    WRITE_DICTS_TO_CSV(result_file,result_list)
+    SPEC_PRINT(['Your result file is ready!!!','File name: '+result_file])
+
+
+
+
