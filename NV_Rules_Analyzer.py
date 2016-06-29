@@ -638,7 +638,8 @@ RULES=[
     'Minify your textual components',
     'Avoid image scaling in HTML',
     'Leverage proxy caching',
-    'Avoid loading javascripts in the head section'
+    'Avoid loading javascripts in the head section',
+    '''Specify your HTML documents' character sets'''
     ]
 test=CHOOSE_OPTION_FROM_LIST_1(RULES, 'Choose Rule you would like to test:')
 
@@ -1604,5 +1605,56 @@ if test=="Avoid loading javascripts in the head section":
     SPEC_PRINT(['Your result file is ready!!!','File name: '+result_file])
 
 
+
+if test=='''Specify your HTML documents' character sets''':
+    usage='''### USAGE ###
+    1)	Use Chrome
+    2)	Close all tabs except NV
+    3)	Open a new TAB with "Developers Tools" opened
+    4)	Start Emulation on NV tab
+    5)	Browse to some site on second TAB
+    6)	Stop NV once site is loaded
+    7)	On second TAB stop recording and use "Save as HAR with content" on "Network" and save all the content into *.har file
+    8)	Run NV analyzing and save PL file as *csv (Open *.pcap file with Wireshark go to : File - Export Packet Dissections - As CSV)
+    9)	Save NV rule's report as *.csv in report.txt file ("Desktop" for Desktop mode and "iPhone" for mobile)
+    10)	Open created result file with Excel and analyze the result according rul'e defenition, result file contains the following columns:
+    ['Status', 'Is_In_Rule', 'URL', 'Is_In_PL', 'Charset_In_Content_Type', 'ResourceSize', 'Referer', 'Is_in_3d_Party', 'Content-Type', 'Parsed_URL_Path']
+    '''
+    print usage
+    CONTINUE('Are you ready to start analyzing process?')
+    har_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.har')==True],'Choose *har file:')
+    report_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.txt')==True],'Choose rule result file:')
+    pl_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.csv')==True],'Choose PL file:')
+    third_parties_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.txt')==True],'Choose 3rd parties file:')
+    result=GET_ALL_RECEIVED_RESOURCES(har_file)
+    rules_result=open(report_file,'r').readlines()
+    rules_result=[item.strip().lower() for item in rules_result]
+    packet_list=open(pl_file,'r').read().lower()
+    result_list=[]
+    for r in result:
+        in_rule=False
+        if r['URL'].lower() in rules_result:
+            in_rule=True
+        r.update({'Is_In_Rule':in_rule})
+        in_td_parties=IS_IN_3D_PARTIES(third_parties_file,GET_TLD(r['URL']).lower(),r['Referer'])
+        r.update({'Is_in_3d_Party':in_td_parties})
+        in_pl=False
+        parsed = urlparse(r['URL'])
+        url_path=parsed.path.lower()
+        if url_path in packet_list:
+            in_pl=True
+        r.update({'Parsed_URL_Path':url_path})
+        r.update({'Is_In_PL':in_pl})
+        charset_in_content_type=False
+        if 'charset' in str(r['Content-Type']).lower():
+            charset_in_content_type=True
+        r.update({'Charset_In_Content_Type':charset_in_content_type})
+        del r['md5_appearance_number']
+        del r['md5']
+        print r
+        result_list.append(r)
+    result_file=har_file.replace('.har','.csv')
+    WRITE_DICTS_TO_CSV(result_file,result_list)
+    SPEC_PRINT(['Your result file is ready!!!','File name: '+result_file])
 
 
