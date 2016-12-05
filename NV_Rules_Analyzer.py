@@ -641,6 +641,15 @@ RULES=[
     'Avoid loading javascripts in the head section',
     '''Specify your HTML documents' character sets'''
     ]
+
+
+
+# all_rules=open('all_rules','r').readlines()
+# for r in all_rules:
+#     if r.strip() not in RULES:
+#         print 'Not implemented rule: '+r.strip()
+
+
 test=CHOOSE_OPTION_FROM_LIST_1(RULES, 'Choose Rule you would like to test:')
 
 if test=='*** Cleaner ***':
@@ -1060,7 +1069,7 @@ if test=='Add long term headers expiration dates':
     third_parties_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.txt')==True],'Choose 3rd parties file:')
 
 
-    # Read cache from CAHCE file as dictionaries into list
+    # Read cache from CACHE file as dictionaries into list
     firefox_cache=open(firefox_cache_file,'r').readlines()
     firefox_cache=[line.strip() for line in firefox_cache if line.count('\t')>3]
     headers=firefox_cache[0].split('\t')
@@ -1090,11 +1099,11 @@ if test=='Add long term headers expiration dates':
 
     for d in updated_dict_list:
         in_rule=False
-        if d['Key '].lower() in rules_result:
+        if d['Key '].lower().replace(' ','') in rules_result:
             in_rule=True
         d.update({'Is_In_Rule':in_rule})
 
-        in_td_parties=IS_IN_3D_PARTIES(third_parties_file,GET_TLD(d['Key ']),d['Referer'])
+        in_td_parties=IS_IN_3D_PARTIES(third_parties_file,GET_TLD(d['Key ']))#,d['Referer'])
         d.update({'Is_in_3d_Party':in_td_parties})
 
         in_pl=False
