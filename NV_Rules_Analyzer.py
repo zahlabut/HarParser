@@ -628,7 +628,7 @@ RULES=[
     'HTTP Server for "Avoid 4xx and 5xx status codes" rule testing',
     'HTTP Client for "Avoid 4xx and 5xx status codes" rule testing',
     'Minimize number of third-party resources',
-    'Add long term headers expiration dates',
+    'Add long term headers expiration dates (Explicitly control caching)',
     'Use a Content Delivery Network (CDN)',
     "Don't download the same data twice",
     'Make fewer HTTP requests',

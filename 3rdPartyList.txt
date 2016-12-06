@@ -1,4 +1,168 @@
-		final String thirdPartyList = "1freecounter\\.com|"
+package com.shunra.analyzerexpress.protocols.http;
+
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+// Singleton pattern
+
+public class HttpThirdParty  {
+	private static HttpThirdParty instance = null;
+	private static Pattern thirdPartyRegexp;
+	
+	 protected HttpThirdParty() {
+	      // Exists as protected - defeats instantiation.
+		 thirdPartyRegexp = Pattern.compile("^.*(" 	+ getThirdPartyList() + ")$");
+	   }
+	 public static HttpThirdParty getInstance() {
+	      if(instance == null) {
+	         instance = new HttpThirdParty();
+	      }
+	      return instance;
+	   }
+	
+	
+	 /**
+	   * Determines if this resource appears to be from a Third party site 
+	   * return true of false
+	   * 
+	   * @param dateString
+	   *         the date string (e.g. "Fri, 18 Nov 2011 18:16:24 GMT")
+	   * @return the date
+	   */
+	
+	 public boolean isResourceThirdParty(HttpRequest rqst) {
+		 //LLM new 12/5/2015 - we can detect a lot more 3rd party sites if we look at the referer header.  If the referrer  is 3rd party
+		 //  then this resource is also third party
+		 
+		 boolean is3rdParty = false;
+		 Matcher regexMatcher;
+		 String referrerHost = rqst.getRefererHost();
+		 
+		 //if (referrerHost.contains("toyota")  ||  rqst.getHost().contains("toyota"))
+		 //	 {
+		 //		System.out.println("isHostThirdParty for -->" + referrerHost + "<--");
+		 //	 }
+		 
+		 if (referrerHost != null) {
+			 regexMatcher = thirdPartyRegexp.matcher(referrerHost);
+			 if (regexMatcher.matches()) {
+				 is3rdParty = true;
+				 }
+			 }
+		 
+		 if (!is3rdParty) {
+			// Referrer is not 3rd party - so we now look up this URL's host
+		
+			String host = rqst.getHost();
+			// System.out.println("isHostThirdParty for -->" + host + "<--");
+
+			if (host != null) {
+				regexMatcher = thirdPartyRegexp.matcher(host);
+				if (regexMatcher.matches()) {
+					is3rdParty = true;
+					}
+				}
+			}
+		 
+		 // still not third party - so check for URL exceptions
+		 if (!is3rdParty) {
+			 is3rdParty = checkURLexceptions(rqst.getFullUrl());
+		 }
+		 
+		 // is3rdParty = false;  // debug if needed - to force rules to show all offenders -- without any 3rd party saavy
+		 
+		 return is3rdParty;
+		 }
+	 
+	 private boolean checkURLexceptions(String url) {
+		 boolean thirdParty = false;
+		 if (url == null) return false;
+
+		 // special cases
+		 if (url.contains("facebook.com/plugins/activity.php"))
+			 thirdParty = true; // Facebook recent activity tracking
+		 else if (url.contains("www.stumbleupon.com/services"))
+			 thirdParty = true; // StumbledUpon share count
+		 else if (url.contains("www.linkedin.com/countserv"))
+			 thirdParty = true;
+		 else if (url.contains("www.linkedin.com/uas/js/userspace"))
+			 thirdParty = true;
+		 // Custom Audience pixel
+		 else if (url.contains("www.facebook.com/tr/?id"))
+			 thirdParty = true; // Facebook Pixel tracking, e.g.	// id=252834944896917&ev=PixelInitialized
+		 else if (url.contains("www.facebook.com/fr/u.php"))
+			 thirdParty = true;
+		 else if (url.contains("www.facebook.com/connect")
+				 || url.contains("facebook.com/v2.0/plugins/like_box.php"))
+			 thirdParty = true;
+		 else if (url.contains("www.google.com/ads")
+				 || url.contains("google.com/adsense")
+				 || url.contains("google.com/uds"))
+			 thirdParty = true;
+		 else if (url.contains("adobe.com/images/shared/download_buttons"))
+			 thirdParty = true;
+		 return thirdParty;
+	 }
+	 
+	private static String getThirdPartyList() {
+			// Obtained this list via manual testing
+			// plus looking at HAR files from NV Freemium
+			// plus some CSV data from HTTP Archive
+			// plus testing sites from
+			// http://w3techs.com/technologies/overview/traffic_analysis/all
+
+			// Consider also using items from here:
+			// https://easylist-downloads.adblockplus.org/easylist.txt
+
+			// microsoftstore.com is a good site to test with ;-)
+
+			/*
+			 * NOTE - we will look at referrer as well, and if the referrer is
+			 * thirdparty then the new resource inherits that attribute
+			 */
+
+			// sy.eu.angsrvr.com -> 302 to Location:
+			// http://angsrvr-656962.c.cdn77.org/img/trpx.gif sy.eu.angsrvr.com
+
+			// TODO code.jquery.com for jquery as CDN?, all code.createjs.com is a CDN
+			// for JS
+			// http://cdnapi.kaltura.com/p/1634272/sp/163427200/embedIframeJs/uiconf_id/22415251/partner_id/1634272
+
+			// nslookup gateway.answerscloud.com -- fastly
+
+			// TODO - analytics companies using a dynamic non-descript domain, e.g.
+			// http://snowplowanalytics.com/
+			// http://dc8xl0ndzn2cb.cloudfront.net/js/nytimes/v1/keywee.js
+			// http://dc8xl0ndzn2cb.cloudfront.net/sp.js
+
+			// http://d2oh4tlt9mrke9.cloudfront.net/Record/js/sessioncam.recorder.js
+			// part of sessioncam.com
+			// http://d2lo2tipcl3aii.cloudfront.net/99C9528793784E238F4D582CEB9D1E3F/neustar.beacon.js
+			// neustar
+
+			// Do we look at the content in the JS files (eek!)
+
+			// See http://trends.builtwith.com/analytics
+			// See http://cookiepedia.co.uk/host/xxxx.com
+
+			// must end with the pattern - as we use the anchor around this.
+			// if (host.matches("^.*(" + Resources.thirdPartyList + ")$"))
+
+			/*-
+			    https://statistic-collector.gad.de/piwik/piwik.js  // Piwik - Web Analytics  http://piwik.org/  - can't tell from just hostname...
+				https://statistiek.rijksoverheid.nl/piwik/piwik.js
+				http://lhsystems-resp.connectaserver.de/piwik/piwik.js
+			 */
+
+			// Datalogix Oracle 1.2B acquisition
+
+
+
+			// TODO 1x1 GIF is normally third party
+			// http://www.tigerdirect.com/foresee/foresee-alive.js?v=2
+			// http://m.zappos.com/tot/js/tealeaf.p.20151012130042.js
+
+		  final String thirdPartyList = "1freecounter\\.com|"
 				+ "1000mercis\\.com|"
 				+ "1105media\\.com|"
 				+ "\\.1prime\\.ru|\\.prime-tass\\.ru|"  // www.1prime.ru can be a legit standalone destination site.  See referal from x5.ru test - via www.prime-tass.ru
@@ -9,6 +173,7 @@
 				+ "247realmedia\\.com|"
 				+ "254a\\.com|"
 				+ "360yield\\.com|"
+				+ " b\\.6sc\\.co|"  // squarespace?
 				+ "replaycontroller\\.4seeresults\\.com|"
 				+ "\\.51\\.la(\\:82)?|" // 51.la or 51.la:82
 				+ "\\.4dsply\\.com|"
@@ -19,6 +184,7 @@
 				+ "\\.acecounter\\.com|" // Seoul
 				+ "\\.acexedge\\.com|"
 				+ "data\\.actnx\\.com|"
+				+ "\\.actonsoftware.com|"  // cdn-ci41  www.act-on.com  Marketing automation website visitor tracking 3000+ customers
 				+ "acuityplatform\\.com|" // acuityads.com/
 				+ "\\.adacado\\.com|" // pixel. info. real time creative RTC ad
 				+ "adadvisor\\.net|"
@@ -37,11 +203,13 @@
 				+ "addthis\\.com|" // addthis_widget.js
 				+ "adengine\\.rt\\.ru|"
 				+ "track\\.adform\\.net|" // adform.com
+				+ "logsys\\.adgather\\.net|"
 				+ "\\.adhigh\\.net|"  // GetIntent DSP  px.
 				+ "adgrx\\.com|" // adgear.com
 				+ "\\.adip\\.ly|\\.adiply\\.com|" 
 				+ "\\.adition\\.com|" // One of Europe's leading service providers offering unified adserving.. e.g. ad2.adfarm1. imagesrv.
 				+ "\\.adjug\\.com|" // tracking.
+				+ "\\.adjust-net\\.jp|"
 				+ "\\.adlegend\\.com|"
 				+ "admantx\\.com|" //  mart data provider.  usasync01. 
 				+ "admathhd\\.com|" // s.
@@ -52,6 +220,9 @@
 				+ "adobedtm\\.com|adobetag\\.com|" // Adobe Tag Management
 				+ "stats\\.adotube\\.com|"
 				+ "\\.ads\\.cc|" // beta.ads.cc t.ads.cc
+				+ "\\.adspirit\\.de|"
+				+ "\\.ad-stir.com|"  // RTB  e.g. bypass.ad-stir.com
+				+ "\\.adsrvr.org|"  // match.  insight.
 				+ "adready\\.com|"
 				+ "\\.adriver\\.ru|"
 				+ "oas\\.adservingml\\.com|oascentral\\.gda\\.com|"
@@ -78,6 +249,7 @@
 				+ "ads-marketing\\.com|"
 				+ "advertising\\.com|" // Part of AOL. e.g.
 										// sync.adaptv.advertising.com
+				+ "\\.advg\\.jp|"
 				+ "\\.advidi\\.com|"
 				+ "adzerk\\.net|" // engine.adzerk.net
 				+ "\\.affinity\\.com|" // imtx.ph. backfill.ph.
@@ -96,12 +268,16 @@
 				+ "apicit\\.net|" // apicit.net/target/
 				+ "js\\.appboycdn\\.com|" // https://js.appboycdn.com/web-sdk/1.1/appboy.min.js  Mobile Marketing Automation
 				+ "appier\\.net|" // leverage AI and Big Data; real time bid
+				+ "apppulse-trace-client\\.saas\\.hpe\\.com|"  // e.g. used by www.advantageonlineshopping.com
 				+ "tag\\.apxlv\\.com|"
 
 				+ "atanx\\.alicdn\\.com|" // Part of Alibaba
 				+ "\\.atwola\\.com|" // tacoda.at.atwola.com
+				+ "cdn\\.audiencedata\\.net|"
 				+ "ds-aksb-a\\.akamaihd\\.net|"  // Akamai site beacon aksb.min.js
+				+ "(app|cdn)\\.akanoo\\.com|" // behaviour / motivation real time campaigns
 				+ "\\.amgdgt\\.com|" // ad.amgdgt.com
+				+ "\\.amoad\\.com|"  // Japan ad platform for smart devices, retarget across web/app/smartphone
 				+ "ape\\.amikay\\.com|"  // Analytics Pros is a Google Analytics Certified Partner  apros.amikay.com
 				+ "\\.amung\\.us|" // real-time stats widgets. whos.
 				+ "\\.analytics\\.yahoo\\.com|" // sp. cms.
@@ -111,18 +287,18 @@
 				+ "gateway\\.answerscloud\\.com|" // Answers foresee.com
 				+ "\\.appserver\\.tv|" // theuppercut.
 				+ "atdmt\\.com|" // Facebook subsidiary Atlas Solutions
-				+ "(static|rules)\\.atgsvcs\\.com|" // Oracle ATG Commerce
-													// platform
+				+ "(static|rules)\\.atgsvcs\\.com|" // Oracle ATG Commerce platform
 				+ "audienceiq\\.com|"
 				+ "api\\.avidadserver\\.com|"
 				+ "photorankstatics-a\\.akamaihd\\.net|"
 				+ "altitude-arena\\.com|"
-				+ "cdn\\.appdynamics\\.com|" // RUM
+				+ "(cdn|eum)\\.appdynamics\\.com|" // RUM  col.eum-appdynamics.com
 												// adrum-ext.a883f43583d96b4d1919dda860dceaee.js
 				+ "adserve\\.atedra\\.com|" // French
 				+ "\\.arktan\\.com|" // social media curation cloud53.
 				+ "\\.arlime\\.com|"
 				+ "ajax\\.aspnetcdn\\.com|"
+				+ "hive\\.annalect\\.com|"  // part of Omnicom Media - digital ad firm
 				+ "atemda\\.com|" // https://atemda.com/UserMatch.ashx?bidderid=23&bidderuid=3zq4k5P..
 				+ "\\.ati-host\\.net|" // atinternet.com 3800 businesses  France  e.g. logws1343.ati-host.net
 				+ "atlassbx\\.com|" // Facebook Atlas, acquired from MSFT for
@@ -139,7 +315,8 @@
 				+ "basebanner\\.com|" // match.
 				+ "\\.basilic\\.io|" // http://foglio.basilic.io/common/foglio.js
 										// perpetuo-onl.
-				+ "bazaarvoice\\.com|"
+				+ "bazaarvoice\\.com|"  // User generated rating/review, Q&A, Curated social media - moderated. e.g. apps.nexus.bazaarvoice.com, analytics-static.ugc.bazaarvoice.com
+				+ "\\.bbb.org|"  // e.g seal-chicago.
 				+ "profile\\.begun\\.ru|"  // e.g. used on one of the ucoz.com sites (tainiomania.ucoz.com)
 				+ "ads\\.betweendigital\\.(com|ru)|" // betweendigital.ru
 				+ "\\.betrad\\.com|" // refer from ad.doubleclick. Part of Evidon  ad privacy
@@ -150,7 +327,7 @@
 				+ "www\\.blogger\\.com|"
 				+ "blogblog\\.com|"
 				+ "\\.bnmla\\.com|" // channel buyers soundwave.bnmla.com
-				+ "boldchat\\.com|"
+				+ "boldchat\\.com|"  // vmss.
 				// 7.3 Trillion Data Points | 1.35 Billion Recommendations | 350
 				// Million Profiles | 1:1 User Experiences
 				+ "boomtrain\\.com|" // personalization for email, onsite,
@@ -167,6 +344,7 @@
 				+ "browser-update\\.org|" // www.krones.com loads this!
 				+ "\\.brsrvr\\.com|"  // p.
 				+ "brtstats\\.com|"
+				+ "core\\.bunchbox\\.com|"  // experiments
 				+ "traffic\\.buyservices\\.com|"
 				+ "burstnet\\.com|" // part of www.rhythmone.com
 				+ "bluekai\\.com|"
@@ -201,6 +379,7 @@
 				// Project
 				+ "channelintelligence\\.com|"
 				+ "\\.chatid\\.com|chatidcdn\\.com|"
+				+ "\\.cheetahmail\\.com|"  // Experian Marketing Services, e.g. ebm.
 				+ "civicscience-widgets\\.s3\\.amazonaws\\.com|civicscience\\.com|"
 				+ "clarifyingquack\\.com|"
 				+ "tr\\.cloud-media\\.fr|" // email retargeting - Arthur Media
@@ -241,6 +420,7 @@
 				+ "data\\.cmcore\\.com|" // Coremetrics - IBM Digital Analytics
 				// UX Analytics is a solution which records the mouse movements,
 				// activity and browsing behavior
+				+ "\\.contactme\\.com|"  // static. buttons.
 				+ "contentsquare\\.com|content-square\\.net|" // UX Analytics,
 																// user
 																// test, UX Test
@@ -255,6 +435,7 @@
 				+ "\\.cquotient\\.com|" // p. cdn.
 				+ "\\.crashlytics\\.com|" // Used by mobile apps, e.g. Corepower
 				+ "\\.crm4d\\.com|" // p. crm cookie tracking France
+				+ "tracking\\.crealytics\\.com|"
 				+ "webfonts\\.creativecloud\\.com|"
 				+ "creativevirtual\\.com|" // UK based - virtual assistant
 				+ "\\.crosssell\\.info|" // widgets.crosssell.info
@@ -265,7 +446,7 @@
 				+ "\\.cxt\\.ms" // Connexity s.
 				+ "cyveillance\\.com|" // cyseal.cyveillance.com/SiteSeal/cyss.js  Brand Protection
 				+ "script\\.crazyegg\\.com|"  // user mouse and click tracking
-				+ "\\.criteo\\.com|\\.criteo\\.net|"
+				+ "\\.criteo\\.com|\\.criteo\\.net|"  // pulls in uimserve.net and adspirit w/o referer
 				+ "crwdcntrl\\.net|" // tags. ad. Lotame Crowd Control
 				+ "\\.curalate\\.com|" // visual marketing platform for
 										// Pinterest,
@@ -278,11 +459,13 @@
 				+ "cdn\\.datatables\\.net|"  // datatable plugin for jQuery
 				+ "\\.de17a\\.com|" // delta projects ad server/track
 				+ "decibelinsight\\.net|" // London based. vistor session replay  / heatmap / form analytics
+				+ "\\.deqwas\\.net|"  // Japan Dekuwasuado
 				+ "delvenetworks\\.com|" // Limelight Video Platform (formerly
 											// Delve
 											// Networks)
 				+ "demandbase\\.com|" // B2B marketing
 				+ "\\.demdex\\.net|" // Part of Adobe; data mgmt platform
+				+ "engage\\.diabolocom\\.com|"  // inbound and outbound call campaigns, live chat
 				+ "\\.dianomi\\.com|" // native ad exclusive for financial
 										// services
 				+ "content\\.dl-rms\\.com|" // Dynamic Logic Advertising - MillwardBrown
@@ -303,6 +486,7 @@
 				+ "dmtry\\.com|" // e.g. log.dmtry.com
 				+ "\\.dsply\\.com|" // part of answers.com
 				+ "dt00\\.net|" // Russia ad
+				+ "static\\.dudamobile\\.com|"  // mobile WordPress plugin, e.g. DM_redirect.js
 				+ "\\.dwin1\\.com|"  // digitalwindow.com  affiliatewindow.com https://www.dwin1.com/2596.js
 				+ "\\.dynad\\.net|"
 				+ "dynamicyield\\.com|"
@@ -313,8 +497,8 @@
 				+ "\\.econda-monitor\\.de|" // www.econda-monitor.de.  See http://www.econda.com/web-analytics/shop-monitor/
 				+ "ecustomeropinions\\.com|" // /survey/i.php
 				+ "use\\.edgefonts\\.net|"  // Adobe free fonts
-				+ "edigitalsurvey\\.com|"
-				// south africa - understand and target audience / targeting
+				+ "edigitalsurvey\\.com|" 		// south africa - understand and target audience / targeting
+				// + "cdn[0-9]\\.editmysite\\.com|"  // Weebly
 
 				+ "\\.effectivemeasure\\.net|" // s. me-cdn.
 				+ "\\.analytics-egain\\.com|"  // http://www.egain.com/  chat, co-browse, virtual assist, survey, etc.  analytics.
@@ -328,6 +512,7 @@
 				+ "\\.emediate\\.se|"
 				+ "ensighten\\.com|"
 				+ "\\.entrust\\.net|"
+				+ "dl\\.episerver\\.net|"  // epserver.com 30,000 websites web content management. A/B, campaigns, etc
 				+ "\\.eproof\\.com|"
 				+ "estara\\.com|" // eStara click to call; part of ATG art tech  group now Oracle
 				+ "\\.estat\\.com|"  // prof.  streaming metrics, mobile app.  French
@@ -342,6 +527,7 @@
 				+ "eurovator\\.se|" // lg. Sweden
 				+ "everyscreenmedia\\.com|"
 				+ "eqads\\.com|"
+				+ "\\.eventcapture06\\.com/"  // lead forensics - identity of anonymous visitors
 				+ "\\.evergage\\.com|" // real time personalization smartdigital.
 				+ "everesttech\\.net|everestjs\\.net|" // IT solutions Ohio;
 														// used by ford.com
@@ -351,7 +537,7 @@
 									// profiles
 				+ "exponential\\.com|" // e.g. tags.expo9.exponential.com
 				+ "exposebox\\.com|" // IL based company - predictive analysis
-				+ "tags\\.extole\\.com|"  // Referral-based marketing
+				+ "tags\\.extole\\.com|\\.extole\\.io|"  // Referral-based marketing.  origin.pr.extole.io
 				+ "\\.eyeota\\.net|"  // ps. 
 				+ "eyereturn\\.com|" // eyereturnmarketing.com/
 				+ "eyeviewads\\.com|"
@@ -360,17 +546,21 @@
 				+ "facetz\\.net|" // Russian analytics google.  e.g. front.
 				+ "fastclick\\.net|"
 				+ "\\.fcacert\\.com|"
+				+ "\\.feedbackify\\.com|"  // real time site feedback
 				+ "feedburner\\.com|"
 				+ "feedjit\\.com|"  // stat counter
 				+ "fenixm\\.com|"
 				+ "pixel\\.fetchback\\.com|"
 				+ "\\.fidelity-media\\.com|"  // x.
+				+ "\\.fit-predictor\\.net|\\.sspinc.io|"  // Secret Sauce Creators of Fit Predictor, Style Finder, Outfit Maker
 				+ "cdn\\.findologic\\.com|" // Intelligent search ranking  
 				+ "firstimpression\\.io|"
 				+ "firststars\\.de|" // online marketing Berlin
 				+ "flashtalking\\.com|" // servedby and secure.flashtalking.com
+				+ "\\.flx1.com|"  // go. c.  FLXone Data Management Platform - part of Teradata
 				+ "fast\\.fonts\\.net|"
 				+ "fontastic.s3.amazonaws.com|file.myfontastic.com|"
+				+ "\\.fout\\.jp|"  // RTB, DSP, DMP  dsp.  cnt.
 				+ "\\.flagcounter\\.com|"  // s01.
 				+ "flickrit\\.com|" // slideshow for Flickr or Instagram
 				+ "ir2\\.flife\\.de|"  // share price ticker
@@ -381,6 +571,7 @@
 				+ "fontdeck\\.com|"
 				+ "force24\\.co\\.uk|" // Marketing Automation (UK)
 				+ "fast\\.fonts\\.com|"
+				+ "\\.fsi-viewer\\.com|"  // view hi-res images  e.g. intersport-cache.
 				+ "ftradtrk\\.com|"
 				+ "fwmrm\\.net|" // FreeWheel Premium Video Economy //
 									// .v.fwmrm.net
@@ -398,10 +589,10 @@
 				+ "genesismediaus\\.com|genesismedia\\.com|" // adserver.
 				+ "seal\\.geotrust\\.com|"
 				+ "getblueshift\\.com|"
+				+ "getrockerbox\\.com|" // recency based ad targeting
 				+ "getsatisfaction\\.com|" // acquired by sprinklr
-				+ "\\.gigya\\.com|" // gscounters.us1.gigya.com Customer
-									// Identity
-									// Management used by 700 Brands
+				+ "\\.gigya\\.com|" // gscounters.us1.gigya.com Customer Identity Management used by 700 Brands
+				+ "\\.globalnimbus\\.com|"  // site language translation
 				+ "seal\\.globalsign\\.com|"
 				+ "\\.go2speed\\.org|"  // media.go2speed.org
 				+ "seal\\.godaddy\\.com|"
@@ -410,6 +601,7 @@
 				+ "googleadservices\\.com|"
 				+ "google-analytics\\.com|"
 				+ "googlecommerce\\.com|"
+				+ "themes\\.googleusercontent\\.com|"
 				+ "googleapis\\.com|apis\\.google\\.com|"
 
 				+ "googlesyndication\\.com|"
@@ -424,12 +616,14 @@
 				+ "data\\.gosquared\\.com|"  // real time analytics  
 				+ "goroost\\.com|"
 				+ "triggertag\\.gorillanation\\.com|"
-				+ "gumgum\\.com|"
+				+ "gumgum\\.com|"  // rev opt for eCommerce
+				+ "\\.granify\\.com|" // 
 				+ "\\.grvcdn\\.com|\\.gravity\\.com|" // Gravity Insights
 				+ "\\.gmads\\.net|.grmtech.net|" // GroupM Germany
 				+ "\\.gravatar\\.com|"
 				+ "media\\.gsimedia\\.(com|net)|"
 				+ "gwallet\\.com|"
+				+ "manage\\.hawksearch\\.com|"  // site search
 				+ "heapanalytics\\.com|" // iOS - automatic event logging - all
 											// user
 											// actions
@@ -450,16 +644,20 @@
 				// MEASURE YOUR WHOLE FUNNEL
 				+ "\\.iadvize\\.com|" // halc.
 				+ "\\.iasds01\\.com|"
+				+ "(ev|global)\\.ib-ibi\\.com|" // IBPartner iBehavior Interactive Data Cooperative - part of KBM Data Services in Louisville CO
 				+ "\\.ibillboard\\.com|" // bbnaut.
 				+ "\\.ibsys\\.com|" // Internet Broadcasting now LAKANA - publishing CMS
+				+ "\\.ic-live\\.com|"  // iCrossing - Hearst global digital marketing
 				+ "\\.iconfinder\\.com|"  //  e.g. https://cdn0.iconfinder.com/data/icons/WPZOOM_Social_Networking_Icon_Set/64/twitter.png
 				+ "\\.iesnare\\.com|" // snare.js iovation reputation management
 				+ "collect\\.igodigital\\.com|" // nova.
 				+ "www\\.images-home\\.com|"  //www.images-home.com/image.js image hosting
+				+ "\\.apps\\.net|"  // Initimate Merger Audience Search data mining  400M audience prospects in DB for Japan
 				+ "impact-ad\\.jp|" // y.one.
 				+ "\\.improvely\\.com|" // conversion track and click fraud  monitor
+				+ "imrk\\.net|imrkcrfv\\.net|"  // 
 				+ "\\.innovid\\.com|" // dts. s. rtr. ag.
-				+ "(api|badges)\\.instagram\\.com|scontent\\.cdninstagram\\.com|"
+				+ "(api|badges)\\.instagram\\.com|scontent\\.cdninstagram\\.com|instagramstatic-a.akamaihd\\.net|"
 				+ "\\.inq\\.com|touchcommerce\\.com|" // TouchCommerce
 														// omni-channel
 														// for mobile, inc.
@@ -478,6 +676,7 @@
 				+ "infusionsoft\\.com|" // 30,000 small biz users
 				+ "inside-graph\\.com|" // Think this is insideyourbusiness.com
 										// **
+				+ "cdn\\.insidesales\\.com|go\\.is\\.com|"
 				+ "insightexpressai\\.com|"
 				+ "t\\.insigit\\.com|"
 				+ "intentmedia\\.net|"
@@ -493,7 +692,8 @@
 				+ "ipredictive\\.com|"
 				+ "\\.ist-track\\.com|" // http://intelligentreach.com/
 				+ "\\.ioam\\.de|"
-				+ "s\\.ixiaa\\.com|"  // IXI Digital resolution system. Equifax - see www.ixicorp.com
+				+ "(test|s|kr)\\.ixiaa\\.com|"  // IXI Digital resolution system map ip address to IXI DB. Equifax - see www.ixicorp.com
+				+ "link\\.(ixs1|llifi)\\.net|\\.ewcsacq.net|"  // e.g. link.chicos.ewcsacq.net
 				+ "janraincapture\\.com|\\.janrain.com|" // janrain.com customer
 															// identity mgmt
 				// jivoxcreatives.s3.amazonaws.com
@@ -519,11 +719,14 @@
 				+ "\\.kavanga\\.ru|" // Media Ad DSP
 				+ "kickfactory\\.com|" // twitter tracking / direct social marketing
 										// kickfactory.com/assets/js/trackback.js
+				+ "scripts\\.kiosked\\.com|"  // Audience Monetization Platform - viewability and relevancy of ads - Finland based
 				+ "kissmetrics\\.com|"
 				+ "kitbit\\.net|"  // no leading node
 				+ "\\.komoona\\.com|" // publisher optimization platform
 				+ "korrelate\\.net|"
+				+ "mastertag\\.kpcustomer\\.de|"
 				+ "\\.krxd\\.net|" // e.g. beacon.krxd.net, apiservices.krxd.net, jslog.krxd.net
+				+ "tag\\.ladsp\\.com|"  // Japan
 				+ "leadformix\\.com|"
 				+ "levexis\\.com|" // tagman..sec. and pfa.levexis.com
 				+ "\\.lexity\\.com|"
@@ -531,6 +734,7 @@
 				+ "\\.lijit\\.com|" // ap. ce.
 				+ "llnw\\.net|" // Limelight
 								// production-mcs\\.lvp\\.llnw\\.net/r/MetricsCollectionService/recordMetricsEvent?
+				+ "linkconnector\\.com|"  // affiliate marketing
 				+ "(ads|platform)\\.linkedin\\.com|"
 				+ "limelight\\.com|"
 				+ "liqwid\\.net|"
@@ -553,11 +757,12 @@
 				+ "luxup\\.ru|" // redirects 301 to http://stat.adlabs.ru/md
 				+ "\\.lytics\\.io|" // c.  Integrated real-time user profiles across email, web, social; segments
 				
+				+ "cdn\\.m-pathy\\.com|"  // m-pathy UX-Insight: high-end recording and analyzing system for interaction data
 				// see http://adexchanger.com/online-advertising/spotlight-on-russia-major-local-players-lead-rtb-market/
 				+ "profile\\.madnet\\.ru|"  // RTB global exchange https://madnetex.com/en/  brings in sync.madnet.ru
 				+ "\\.magnuum\\.com|" // cdn.
 				+ "(top-fwz1|ok-portal|bar\\.love|portal)\\.mail\\.ru|"  // mail.ru is very large russia site with search, social, IM, etc.  /counter?js=
-				+ "forms\\.mailmuch\\.co|"
+				+ "forms\\.mailmunch\\.co|"
 				+ "\\.mainadv\\.com|"
 				+ "\\.nanigans\\.com|" // api.
 				+ "www\\.mapquestapi\\.com|"
@@ -588,12 +793,13 @@
 				+ "meltdsp\\.com|" // real time bidding DSP
 				+ "feed\\.meltwater\\.com|meltwaternews\\.com|"  // Norway based company with over $200M in revenue.  Media intelligence 
 				+ "mercent\\.com|" // CommerceHub
+				+ "\\.metrigo\\.com|" // Hamburg - Personalized Ads
 				// + "\\.metanetwork\\.net|"  // refer from ads.pubmatic.com rtbp-pixel.us.metanetwork.net
 				+ "\\.netmng\\.com|" // liveramp2waycm-atl.netmng.com
 										// com-footballfan.netmng.com
 				+ "miaozhen\\.com|"
 				+ "\\.micpn\\.com|" // movableink.com
-				+ "\\.microadinc\\.com|" // d-cache.  d-track.send.  MicroAd Japan/China
+				+ "\\.microadinc\\.com|\\.microad\\.jp|" // d-cache.  d-track.send.  MicroAd Japan/China
 				
 				+ "(download|go)\\.microsoft\\.com|" // e.g. if Silverlight player is being downloaded for example
 				
@@ -605,10 +811,12 @@
 															// mobile/web
 															// analytics
 			
+				+ "contents\\.mkt941\\.com|www\\.pages0[1-9]\\.net|" // silverpop marketing automation (IBM 275M acq)
 				+ "mmtro\\.com|"
 				+ "mnet-ad\\.net|"
 				+ "www\\.mlstat\\.com|"  //ww.mlstat.com/scripts/appid.V2.js
-				+ "moatads\\.com|" // z.moatads.com
+				+ "moatads\\.com|moatpixel\\.com|" // z.moatads.com
+				+ "\\.mobify\\.(net|com)|"  // mobile commerce engagement  cdn.  engagement-collector. a.
 				+ "mookie1\\.com|" // Media Innovation Group
 				+ "moovweb\\.net|"
 				+ "monetate\\.com|monetate\\.net|"
@@ -644,16 +852,19 @@
 				+ "nextmedia\\.com|"
 				+ "\\.nighter\\.club|"
 				+ "attribution\\.webmarketing123\\.com|"
+				+ "\\.webmasterplan\\.com|"
 				+ "seal\\.websecurity\\.norton\\.com|" // seal.websecurity.norton.com/getseal
 				+ "ssl\\.webserviceaward\\.com|"
 				+ "imp\\.nowinteract\\.com|"  // predictive intelligence
 				+ "nr-data\\.net|"
+				+ "s\\.ntv\\.io|(ntvimg|ntvassets)-a\\.akamaihd\\.net|"  // www.nativo.net Nativo true native advertising
 				+ "nuggad\\.net|" // Europe smart audience platform www.nugg.ad
 				
 				+ "\\.nuseek\\.com|" // rte-sjl.nuseek.com rte-ash. rte-img.
 
+				+ "nxtck\\.com|"  // no leading node.  www.nextperf.com  dynamic retarget/ second screen retarget
 				// "\\.2o7\\.net|" // Omniture's SiteCatalyst and SearchCenter
-				+ "\\.olark\\.com|" // chat  events.
+				+ "\\.olark\\.com|" // 10,000 customers. Live chat  Track key page events.  Targetd Chat, pre-chat survey, vistor email / info, Angular JS variable access
 				+ "omtrdc\\.net|\\.2o7\\.net|\\.brcdn\\.com|" // Omniture - part of Adobe survey.122.2o7.net  multiview.122.2o7.net
 				+ "onclickads\\.net|" // e.g. http://onclickads.net/apu.php?zoneid=355643
 				+ "ooyala\\.com|" // player.
@@ -665,6 +876,7 @@
 				+ "optinmonster\\.com|"
 				+ "\\.optimost\\.com|" // es.
 				+ "optimove\\.net|" // optimove.com cust retention
+				+ "bi\\.owox\\.com|" // google analytics add-on using BigQuery
 				+ "\\.pages0[0-6]\\.net|\\.silverpop\\.com|"  // pages01-pages06 silverpop
 				+ "\\.silverpush\\.co|"  // TV Advertising pix.
 				+ "\\.pubnub\\.com|"  // real-time app communications.  ps17.  v2/presence/sub-key
@@ -680,6 +892,8 @@
 										// cdn.
 				+ "api\\.parse\\.com|" // Used by mobile apps, e.g. Corepower
 				+ "parsely\\.com|" // Audience insights for publishers
+				+ "\\.peerius\\.com|" // e.g. xxxlshop.peerius.com  Converged personalization across channels 
+				+ "perfectaudience\\.com|\\.prfct\\.co|" // Ad retargeting
 				+ "\\.performgroup\\.com|" // player. www.geolocation.
 				+ "pixel\\.ad|" // centro. SiteScout self service
 				+ "pixel\\.co|" // snowplow analytics
@@ -688,6 +902,7 @@
 				+ "share\\.pluso\\.ru|"
 				+ "urldefense\\.proofpoint\\.com|"  // protect data
 				+ "provenpixel\\.com|"
+				+ "\\.providesupport\\.com|"  // online chat
 				+ "\\.pulsemgr\\.com|"  // img. part of AOL
 				+ "pxlad\\.io|pixanalytics\\.com|"
 				+ "\\.openstat\\.net|"
@@ -700,7 +915,7 @@
 														// exchange
 				+ "\\.performfeeds\\.com|"
 				+ "pgsitecore\\.com|"
-				+ "(api|ct|log)\\.pinterest\\.com|"
+				+ "(api|ct|log|assets)\\.pinterest\\.com|\\.pinimg\\.com|"  // passets. assets.
 				+ "pitchero\\.com|"
 
 				+ "platform\\.twitter\\.com|analytics\\.twitter\\.com|"
@@ -718,7 +933,7 @@
 				+ "\\.qmerce\\.com|" // apester.com digital storytelling
 				+ "\\.qservz\\.com|"
 				+ "qubitproducts\\.com|" // pong.
-				+ "\\.quantserve\\.com|\\.quantcount\\.com|widget\\.quantcast\\.com|" // cms.quantserve.com
+				+ "\\.quantserve\\.com|\\.quantcount\\.com|widget\\.quantcast\\.com|media\\.struq\\.com|" // cms.quantserve.com
 				// secure.quantserve.com pixel.quantcount.com
 				// see quantcast.com
 				+ "\\.questionmarket\\.com|"
@@ -726,6 +941,7 @@
 				+ "siteintercept\\.qualtrics\\.com|" // zn_4slwdofs4ykbmhc-espn.siteintercept.qualtrics.com
 				+ "\\.quisma\\.com|" // part of GroupM t.
 				+ "js\\.quova\\.com|"  // location services, part of Neustar
+				+ "\\.r10s\\.jp|"
 				+ "counter\\.rambler\\.ru|"
 				+ "cdn\\.rawgit\\.com|rawgit\\.com|"  // serves raw files from git with correct MIME types, served by MaxCDN
 				+ "\\.raygun\\.io|" // runtime error detection / crash report / pulse  RUM
@@ -757,7 +973,7 @@
 				+ "rhythmxchange\\.com|"
 				+ "richmetrics\\.com|"
 				+ "richrelevance\\.com|" // media.
-				+ "\\.rightnowtech\\.com|" //  Oracle Service Cloud (Rightnow) 
+				+ "\\.rightnowtech\\.com|\\.rnengage\\.com|" //  Oracle Service Cloud (Rightnow) , RightNow CX
 				+ "\\.rkdms\\.com|" // mct.
 				+ "\\.rmgserving\\.com|"
 				+ "js\\.rmtag\\.com|"
@@ -770,7 +986,9 @@
 											// Used on http://www.trademe.co.nz/
 				+ "match\\.rtbidder\\.net|" // Brandscreen brandscreen.com media
 											// buying
+				+ "\\.rtoaster\\.jp|"  // Japan largest private DMP rec engine, 2B data points 150 companies
 				+ "ru4\\.com|"
+				+ "cdn\\.rubikcloud\\.com|"
 				+ "rubiconproject\\.com|"
 				+ "www\\.rumiview\\.com|"
 				+ "runadtag\\.com|"
@@ -779,16 +997,17 @@
 				+ "salesforceliveagent\\.com|"
 				+ "\\.salesmanago\\.pl|"  // marketing automation.  2500 customers, #1 in Poland
 				+ "samba\\.tv|"
-				+ "execution-ea\\.ci360\\.sas\\.com|"
+				+ "(execution-ea|execution-ue-ea)\\.ci360\\.sas\\.com|"
 				+ "scanalert\\.com|"  // McAfee Trustmark
 				
 				// Note - scene7 is Adobe third party but hosts actual site assets
+				// deichman.scene7.com  Adobe assets on demand SaaS platform 
 				// e.g. http://s7d1.scene7.com/is/image/officedepot/02720_storefront?$OD%2DEnlarge$
 				// and http://s7d1.scene7.com/is/image/officedepot/348037_p_new2?$OD%2DMed$
 				// and http://soliver.scene7.com/is/content/soliver/video/homepage/jumbo1280/2015-11-19_hp_video_kleid_Flash9_1280xauto_1400K.mp4
 				// + "\\.scene7\\.com|"  // Adobe experience manager
 				
-				+ "recommender\\.scarabresearch\\.com|" // Emarsys aquired.  Product recommender based on behaviour  
+				+ "(cdn|recommender)\\.scarabresearch\\.com|" // Emarsys aquired.  Product recommender based on behaviour  
 				
 				// Norwegian media group with operations in 29 countries
 				+ "collector\\.schibsted\\.io|\\.schibsted\\.com|"  // cis.schibsted.com/api/v1/identify
@@ -826,6 +1045,7 @@
 				+ "\\.simplycast\\.us|" // simplycast.com
 				+ "\\.skyglue\\.com|" // Google Analytics add on; follow click path
 				+ "socsi\\.in|socialsignin\\.net|"
+				+ "embed\\.spotfiy\\.com|"
 				+ "spotxcdn\\.com|"
 				+ "\\.sphereup\\.com|" // site search
 				+ "sophus3\\.com|" // scripts. auto. London
@@ -853,14 +1073,16 @@
 				+ "smartadserver\\.com|adserve\\.io|" // smartadserver refer by rubiconproject.com
 				+ "ad\\.sxp\\.smartclip\\.net|" // www.smartclip.com video ad
 				+ "smart-digital-solutions\\.de|smart-digital\\.de|" // chat.smart-digital.de
-				+ "tr3\\.smarterhq\\.io|"
+				+ "tr[1-9]\\.smarterhq\\.io|"  // tr2. tr3.
 				+ "chat\\.smartsupp\\.co|"  // https://www.smartsupp.com/us/  live chat with video recording.  Brno, CZ based
 				+ "snapengage\\.com|" // live chat
 				+ "snapwidget\\.com|" // display instagram photos on site
+				+ "\\.socdm\\.com|"  // Japan  adgen. tg. d. ssl.
 				+ "sonar\\.sociomantic\\.com|"  // eu-sonar. sonar.
 				+ "sojern\\.com|" // RevDirect travel ad targeting
 				+ "sokrati\\.com|" // India leading ad and analytics
 				+ "solvemedia\\.com|"
+				+ "\\.springboardplatform\\.com|"  // video streams into ad dollars  www, cms, cdn
 				+ "\\.spreaker\\.com|"  // tools for podcast publishing
 				+ "sonobi\\.com|" // digital display advertising
 				+ "soundcloud\\.com|" // player
@@ -871,15 +1093,18 @@
 				+ "staticiv\\.com|"
 				+ "steelhousemedia\\.com|"
 				+ "stormiq.com|\\.dc-storm.com|" // omcore.net
+				+ "live\\.storystream\\.it|"  // UGC - user generated content
+				+ "\\.streamrail\\.com|"  // Video player for ad networks
 				+ "js\\.stripe\\.com|"  // in-app purchasing "Relay".  Stripe.js securely transmits card details from browsers to Stripe
 				+ "sundaysky\\.com|" // Smart Video Stories
 				+ "\\.surge\\.sh|" // Static web publishing for front-end developers.  Deploy to CDN.  overt-discovery.
 				+ "surveymonkey\\.com|"
-				+ "\\.swiftype\\.com|\\.swiftypecdn.com|" // site search / real-time analytics
+				+ "\\.swiftype\\.com|\\.swiftypecdn.com|" // site search / real-time search analytics - real-time feedback and user  insight, and forecast search trends
 				+ "delivery\\.swid\\.switchads\\.com|"
 				+ "synthetix-ec1\\.com|" // chat, knowledgeagent for CSR,intelligent
 											// FAQ, Virtual Agent
 				+ "nsg\\.symantec\\.com|" // http://nsg.symantec.com/Web/Seal
+				+ "api\\.synapse-link\\.com|"
 				+ "t4ft\\.de|" // FirstTAG
 				+ "\\.taboola\\.com|"
 				+ "tagsrvcs\\.com|" // s.tagsrvcs.com
@@ -897,6 +1122,7 @@
 														// predictive marketing
 														// /
 				// self-learning
+				+ "api\\.temails\\.com|"  // triggeremailmarketing.com ecommerce email
 				+ "\\.tenmax\\.io|" // Taiwan e.g. rtb-asiamax
 				+ "babm\\.texthelp\\.com|" // browse aloud screen accesibility reader
 				+ "seal\\.thawte\\.com|"
@@ -918,6 +1144,7 @@
 				+ "\\.tpm\\.pw|" // p.tpm.pw/sync
 				+ "\\.tracer\\.jp|" // www31.
 				+ "track\\.contently\\.com|"
+				+ "rest\\.contextly\\.com|" // content recommendation system 
 				+ "trackalyzer\\.com|"
 				+ "\\.trackedlink\\.net|" //t.
 				+ "tracking\\.searchmarketing\\.com|" // ChannelAdvisor
@@ -927,11 +1154,12 @@
 				+ "\\.tradelab\\.fr|"
 				+ "trafficjunky\\.net|"
 				+ "\\.trb\\.com|"
+				+ "in\\.treasuredata\\.com|" // data mining analytics integrations - Cloud Big Data.  30M + VC
 				+ "tremorhub\\.com|" // partners.
 				+ "tribalfusion\\.com|" // cortex-imp.tribalfusion.com
 										// s.tribalfusion.com
-				+ "\\.appspot\\.com|" // bluecore sd-chat. triggeredmail.
-										// oncueapp.
+				+ "\\.appspot\\.com|" // bluecore sd-chat. triggeredmail. oncueapp.
+				
 				+ "triggeredmessaging\\.com|"
 				+ "triggit\\.com|" // smart retargeting for Facebook etc
 				+ "tritondigital\\.com|" // audio advertising
@@ -949,6 +1177,7 @@
 				+ "rum\\.turbobytes\\.com|" // rum.turbobytes.com/static/rum/rum.js
 											// // multi-CDN perf analysis
 				+ "\\.turn\\.com|" // e.g. r.turn.com, ad.turn.com
+				+ "platform\\.tumblr\\.com|"
 				+ "tumra\\.com|" // eCommerce optimization UK based
 				+ "\\.tvsquared\\.com|" // collector-700.tvsquared.com
 				// t.co is also used for twitter - need to add it separately at
@@ -956,6 +1185,7 @@
 				// end
 				+ "api\\.twitter\\.com|twimg\\.com|syndication\\.twitter\\.com|analytics\\.twitter\\.com|"
 				+ "(use|p)\\.typekit\\.(net|com)|" // Adobe Typekit subscription Fonts
+				// + "cloud\\.typography\\.com|"  // Hoefler & Co -- will redirect (chicos.com) back to host site!
 				+ "\\.tynt\\.com|" // e.g. de.tynt.com. cdn.tynt.com ic.  RevCTRL ad placement
 
 				+ "\\.undertone\\.com|"  // pixl studios
@@ -965,11 +1195,12 @@
 				+ "\\.ulogix\\.ru|"  // RTB  -- see https://www.adfox.ru/en/news_detail/17/ for 2013 market dynamics and other competitors
 				+ "\\.unthem\\.com|" // api
 				+ "\\.uptolike\\.(ru|com)|"  // see http://top.ucoz.com/top.html for lots of ucoz based sites and Russia ad 3rd party.  Example here is http://deathgrind.net/
-				+ "\\.useitbetter\\.com|" // Capture 100% of user click stream,
-											// A:B. From Poland (orig for games)
+				+ "\\.useitbetter\\.com|" // Capture 100% of user click stream,  A:B. From Poland (orig for games)
+				+ "survey\\.webstatus\\.v2\\.userneeds\\.dk|" // Nordic survey
 				+ "\\.userreport\\.com|" // e.g. https://pdw-adf.userreport.com/cs  UserReport's online survey tool
 				+ "userzoom\\.com|" // UX research studies; clickstream
 									// recording
+				+ "\\.adtdp\\.com|"  // Japan
 				+ "\\.adtechus\\.com|\\.adtech\\.de|" // AOL Adtech ad serving
 														// adtech.com
 				// ums.adtechus adserver.adtechus
@@ -984,6 +1215,7 @@
 				+ "\\.univide\\.com|"
 				+ "w\\.usabilla\\.com|" // NL company - user feedback / survey
 				+ "ustream\\.tv|" // video platform
+				+ "config1.veinteractive\\.com|" // 10,000 clients and 650M unique devices / mo - insights into cust activity, keep engaged on edge abandoment
 				+ "vergic\\.com|" // visitor-af. Vergic engage - five billion
 									// online
 									// interactions per year
@@ -1011,13 +1243,16 @@
 				+ "\\.vizu\\.com|"
 				+ "yldmgrimg\\.net|"
 				+ "voicefive\\.com|" // sb. ar.
+				+ "adtrack\\.voicestar\\.com|"  // MARCHEX analytics for ad driven phone calls
 				+ "w55c\\.net|" // sometimes refer by pubmatic, e.g. pm.
 				+ "webcollage\\.net|" // webcollage.com
 				+ "\\.webengage\\.(com|co)|" // cdn.widgets. survey, feedback forms, push notifications - India based
+				+ "\\.webleads-tracker\\.com|"  // stats.
 				+ "clients\\.weblink\\.com\\.au|" //  ASX stockmarket stock price quotes
 				+ "weborama\\.fr|"  // aimfar.solution.weborama.fr
 				+ "webspectator\\.com|" // time and attention ad space
 				+ "\\.webterren\\.com|"  // Chinese traffic analysis
+				+ "\\.webtracker\\.jp|"
 				+ "webtrends\\.com|webtrendslive\\.com|"
 				+ "webtrekk\\.(net|com)|" // Analytics. Based in Berlin
 				+ "\\.webtype\\.com|"  // pls.  fonts
@@ -1041,6 +1276,7 @@
 				+ "wywyuserservice\\.com|\\.wywy\\.com|"  // static.wywy.com, analyze. Munich based TV Ad Maximize ROI. TVSync 
 				
 				// see http://www.xmlshop.com/statistic.html
+				+ "\\.xlisting\\.jp|" // Excite Japan LookSmart site directory  ping-dmp. pulsar 
 				+ "xmlshop\\.biz|"  // Affiliate network
 				+ "xg4ken\\.com|" // Kenshoo
 				+ "\\.xiti\\.com|" // website traffic monitor AT Internet
@@ -1066,15 +1302,16 @@
 				+ "tag\\.yieldoptimizer\\.com|" + "yldbt\\.com|" // cdn.yldbt.com/js/yieldbot.intent.js
 				+ "\\.yieldpartners\\.com|"  // tg-03.
 				+ "\\.yotpo\\.com|" // cust content marketing
+				+ "youtube-nocookie\\.com|"
 				+ "\\.youku\\.com|"  // China video hosting
 				+ "youramigo\\.com|" // Spider Linker organic search
 				+ "youtube\\.com|" + "\\.ywxi\\.net|" + "\\.vmmpxl\\.com|" // secimg
-				+ "s\\.ytimg\\.com|"
+				+ "(i|s)\\.ytimg\\.com|"
 				+ "\\.zanox\\.com|" // Europe ad network //api. static.
 				+ "\\.zendesk\\.com|"  // assets.  etpgpb1. for site etpgpb.ru
 				+ "\\.zettata\\.com|" // ecommerce search api.apac-sg.
-				+ "zeusclicks\\.com|" + "ziftsolutions\\.com|" // Channel Marketing
-																// Autommation
+				+ "zeusclicks\\.com|" + "ziftsolutions\\.com|" // Channel Marketing Autommation
+				+ "secure\\.api\\.viewer\\.zmags\\.com|" // shoppable content
 				+ "zoomanalytics\\.co|" // IL based company
 				+ "\\.zopim\\.com|" // Live chat
 				// vk.com is Europe's largest social network 100 M users  http://vk.com/js/api/openapi.js?97
@@ -1082,5 +1319,16 @@
 				+ "\\.zedo\\.com|" + "\\.zkcdn\\.com|" + "^t\\.co|" + "^vk\\.com|"
 				+ "^ml314\\.com|\\.ml314\\.com|"  // bombora B2B intent driven data aggregator ml314.com in.ml314.com
 				+ "^rpxnow\\.com|"
-				+ "^bat\\.bing\\.com|" + "^bat\\.r\\.msn\\.com"; // special cases, must be last due to anchor. Twitter
+
+				+ "^bat\\.bing\\.com|" + "^bat\\.r\\.msn\\.com"; // special
+		// cases,
+		// must be
+		// last
+		// due to
+		// anchor. Twitter
 		
+		 return thirdPartyList;
+		 
+	 } // end getThirdPartyList
+
+}
