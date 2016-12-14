@@ -472,7 +472,10 @@ def GET_ALL_RECEIVED_OBJECT_FROM_HAR(har_file):
     return data_to_return_list
 
 def GET_ALL_IMAGE_SIZES_HTML_AND_REAL(url):
-    driver = webdriver.Firefox()
+    if 'windows' in platform.system().lower():
+        driver = webdriver.Chrome()
+    if 'linux' in platform.system().lower():
+        driver = webdriver.Firefox()
     driver.get(url)
     images=driver.find_elements_by_tag_name('img')
     lis=[]
@@ -663,7 +666,8 @@ if test=='*** Cleaner ***':
                'NV_Rules_Analyzer.py',
                'README.md',
                '1.jpg',
-               'TrafficTypes.py']
+               'TrafficTypes.py',
+               'chromedriver.exe']
     known_ext=['.pyc']
     CONTINUE('All files except: '+str(lo_lagaat)+' will be deleted, to continue?')
     files=os.listdir('.')
@@ -1044,7 +1048,7 @@ if test=='Minimize number of third-party resources':
 
 
 
-if test=='Add long term headers expiration dates':
+if test=='Add long term headers expiration dates (Explicitly control caching)':
     usage='''### USAGE ###
     1)	Use Firefox
     2)  Clean firefox cache
