@@ -475,6 +475,8 @@ def GET_ALL_IMAGE_SIZES_HTML_AND_REAL(url):
     if 'windows' in platform.system().lower():
         driver = webdriver.Chrome()
     if 'linux' in platform.system().lower():
+        display = Display(visible=0, size=(800, 600))
+        print 'Start display result: ', display.start()
         driver = webdriver.Firefox()
     driver.get(url)
     images=driver.find_elements_by_tag_name('img')
