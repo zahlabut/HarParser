@@ -502,6 +502,7 @@ def GET_ALL_IMAGE_SIZES_HTML_AND_REAL(url):
         l.update({'Real_Size':real_size})
         print ' --> '+url, str(scaling)
     driver.quit()
+    print "Page was successfully loaded"
     os.remove(os.path.abspath('image'))
     return lis
 
@@ -1372,7 +1373,7 @@ if test=="Avoid image scaling in HTML":
     usage='''### USAGE ###
     1)	Start NV Emulation
     2)	Type tested site (script will prompt you to type the URL)
-    3)	Stop NV once firefox is closed (Selenium based test)
+    3)	Stop NV once Browser is closed and "Page was successfully loaded" is shown
     4)	Run NV analyzing and save PL file as *csv (Open *.pcap file with Wireshark go to : File - Export Packet Dissections - As CSV)
     5)	Save NV rule's report as *.csv in report.txt file ("Desktop" for Desktop mode and "iPhone" for mobile)
     6)	Open created result file with Excel and analyze the result according rul'e defenition, result file contains the following columns:
