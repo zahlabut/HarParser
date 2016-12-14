@@ -488,7 +488,7 @@ def GET_ALL_IMAGE_SIZES_HTML_AND_REAL(url):
         url=image.get_attribute("src")
         html_size=image.size
         lis.append({'HTML_Size':html_size,'HTML_URL':url})
-    driver.quit()
+    #driver.quit()
 
     for l in lis:
         scaling=None
