@@ -16,6 +16,7 @@ import urllib
 import shutil,os,platform
 import urllib2
 import htmlmin
+from pyvirtualdisplay import Display
 
 
 def GET_ALL_SCRIPS_FROM_HEAD_HTML_TAG(data):
