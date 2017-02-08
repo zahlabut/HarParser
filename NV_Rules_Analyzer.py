@@ -17,12 +17,12 @@ import shutil,os,platform
 import urllib2
 import htmlmin
 from pyvirtualdisplay import Display
-
+from bs4 import BeautifulSoup
 
 def GET_ALL_SCRIPS_FROM_HEAD_HTML_TAG(data):
     if data==None:
         return [{'ScriptSource':None,'IsScriptInHead':None,'ScriptTag':None}]
-    soup = BeautifulSoup.BeautifulSOAP(data)
+    soup = BeautifulSoup(data,'lxml')
     head_scripts=[]
     head=str(soup.findAll('head')).lower()
     for s in soup.findAll('script',{"src":True}):
@@ -434,12 +434,13 @@ def GET_ALL_RESPONSE_HEADERS(har_file):
     return all_urls
 
 def GET_IMAGE_RESOLUTION(img_path):
-    try:
-        im = Image.open(img_path)
-        width, height = im.size
-        return{'Width':width,'Height':height}
-    except Exception,e:
-        return {'Error':str(e)}
+    #try:
+    im = Image.open(img_path)
+    width, height = im.size
+    return{'Width':width,'Height':height}
+    #except Exception,e:
+    #    print e
+    #    return {'Width':None,'Height':None}
 
 def GET_ALL_RECEIVED_OBJECT_FROM_HAR(har_file):
     data_to_return_list=[]
@@ -458,6 +459,8 @@ def GET_ALL_RECEIVED_OBJECT_FROM_HAR(har_file):
                 transfer_encoding=header['value']
             if header['name'].lower()=='content-length':
                 content_length=header['value']
+                if content_length.isdigit()==True:
+                    content_length=float(content_length)/1024.0
         for header in item['request']['headers']:
             if header['name'].lower()=='referer':
                 referer=header['value']
@@ -466,48 +469,63 @@ def GET_ALL_RECEIVED_OBJECT_FROM_HAR(har_file):
                                     'Content-Type':content_type,
                                     'Response_Headers':item['response']['headers'],
                                     'Transfer-Encoding':transfer_encoding,
-                                    'Content-Length':content_length,
-                                    'BodySize':item['response']['bodySize'],
+                                    'Content-Length[K]':content_length,
+                                    #'BodySize[K]':item['response']['bodySize']/1024.0,
                                     'Referer':referer,
                                     'Status':item['response']['status']})
     return data_to_return_list
 
 def GET_ALL_IMAGE_SIZES_HTML_AND_REAL(url):
+    images=[]
     if 'windows' in platform.system().lower():
         driver = webdriver.Chrome()
     if 'linux' in platform.system().lower():
         display = Display(visible=0, size=(800, 600))
         print 'Start display result: ', display.start()
         driver = webdriver.Firefox()
+    user_agent=driver.execute_script("return navigator.userAgent")
     driver.get(url)
-    images=driver.find_elements_by_tag_name('img')
-    lis=[]
-#    CONTINUE('Stop NV emulation, to continue?')
-    for image in images:
-        scaling=None
-        url=image.get_attribute("src")
-        html_size=image.size
-        lis.append({'HTML_Size':html_size,'HTML_URL':url})
-    #driver.quit()
+    print "Page was successfully loaded"
+    opener = urllib2.build_opener()
+    opener.addheaders = [('User-Agent', user_agent)]
+    html = opener.open(url).read()
 
-    for l in lis:
+    soup = BeautifulSoup(html,"lxml")
+    for pic in soup.find_all('img'):
+        src=pic.get('src')
+        if 'http' not in src:
+            src=url.strip('/')+pic.get('src')
+        images.append({'HTML_Size':{'width':pic.get('width', None),'height':pic.get('height', None)},'HTML_URL':src})
+    driver.close()
+    driver.quit()
+    SPEC_PRINT(['Please stop NV emulation to continue test!'])
+    CONTINUE('To continue?')
+
+    for l in images:
         scaling=None
         url=l['HTML_URL']
-        urllib.urlretrieve(url,"image")
-        image_path=os.path.abspath('image')
+        #image_name='image'
+        image_name=url.split('.')[-1]
+        if '?' in image_name:
+            image_name=image_name.split('?')[0]
+        #try:
+        if url=='':
+            continue
+        urllib.urlretrieve(url,image_name)
+        image_path=os.path.abspath(image_name)
         real_size=GET_IMAGE_RESOLUTION(image_path)
-        try:
-            if l['HTML_Size']['width']<real_size['Width'] and l['HTML_Size']['height']<real_size['Height']:
-                scaling=True
-        except Exception,e:
-            print str(e)
+        if l['HTML_Size']['width']!=None and int(l['HTML_Size']['width'])<real_size['Width']:
+            scaling=True
+        if l['HTML_Size']['height']!=None and int(l['HTML_Size']['height'])<real_size['Height']:
+            scaling=True
         l.update({'Scaling':scaling})
         l.update({'Real_Size':real_size})
-        print ' --> '+url, str(scaling)
-    driver.quit()
-    print "Page was successfully loaded"
-    os.remove(os.path.abspath('image'))
-    return lis
+        print ' --> '+url+' Scaling:'+str(scaling)
+        os.remove(os.path.abspath(image_name))
+        #except Exception,e:
+        #    print url,e
+        #    continue
+    return images
 
 def GET_ALL_RECEIVED_OBJECT_SAVE_VARY_CHECK_QUERY(har_file):
     data_to_return_list=[]
@@ -639,13 +657,13 @@ RULES=[
     'Use a Content Delivery Network (CDN)',
     "Don't download the same data twice",
     'Make fewer HTTP requests',
-    'Avoid large objects',
+    #'Avoid large objects',
     'Avoid referencing images in stylesheets',
     'Avoid URL redirects',
     'Minify your textual components',
-    'Avoid image scaling in HTML',
+    #'Avoid image scaling in HTML',
     'Leverage proxy caching',
-    'Avoid loading javascripts in the head section',
+    #'Avoid loading javascripts in the head section',
     '''Specify your HTML documents' character sets'''
     ]
 
@@ -672,12 +690,18 @@ if test=='*** Cleaner ***':
                '1.jpg',
                'TrafficTypes.py',
                'chromedriver.exe']
-    known_ext=['.pyc']
-    CONTINUE('All files except: '+str(lo_lagaat)+' will be deleted, to continue?')
+    known_ext=['.py','.exe']
+    #CONTINUE('All files except: '+str([l+'\r\n' for l in lo_lagaat])+' will be deleted, to continue?')
     files=os.listdir('.')
+    files_to_delete=[]
     for f in files:
         if f not in lo_lagaat and '.'+f.split('.')[-1] not in known_ext:
-            print f
+            files_to_delete.append(f)
+    files_to_delete.insert(0,'Following files will be deleted!!!')
+    SPEC_PRINT(files_to_delete)
+    CONTINUE('To Continue?')
+
+    for f in files_to_delete:
             try:
                 os.remove(os.path.abspath(f))
             except Exception,e:
@@ -1340,6 +1364,7 @@ if test=="Avoid large objects":
     '''
     print usage
     CONTINUE('Are you ready to start analyzing process?')
+    dir_files=os.listdir('.')
     har_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.har')==True],'Choose *har file:')
     report_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.txt')==True],'Choose rule result file:')
     pl_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.csv')==True],'Choose PL file:')
@@ -1365,7 +1390,7 @@ if test=="Avoid large objects":
         r.update({'Is_In_PL':in_pl})
 
         result_list.append(r)
-    result_file=har_file.replace('.har','.csv')
+    result_file='Avoid_large_objects.csv'
     WRITE_DICTS_TO_CSV(result_file,result_list)
     SPEC_PRINT(['Your result file is ready!!!','File name: '+result_file])
 
@@ -1375,7 +1400,7 @@ if test=="Avoid large objects":
 if test=="Avoid image scaling in HTML":
     usage='''### USAGE ###
     1)	Start NV Emulation
-    2)	Type tested site (script will prompt you to type the URL)
+    2)	Tested site is Ynet
     3)	Stop NV once Browser is closed and "Page was successfully loaded" is shown
     4)	Run NV analyzing and save PL file as *csv (Open *.pcap file with Wireshark go to : File - Export Packet Dissections - As CSV)
     5)	Save NV rule's report as *.csv in report.txt file ("Desktop" for Desktop mode and "iPhone" for mobile)
@@ -1384,10 +1409,12 @@ if test=="Avoid image scaling in HTML":
     '''
     print usage
     CONTINUE('Are you ready to start analyzing process?')
-    url=raw_input('Enter your test site without "http://": ')
-    url='http://'+url
+    #url=raw_input('Enter your test site without "http://": ')
+    #url='http://'+url
+    url='http://ynet.co.il'
     result=GET_ALL_IMAGE_SIZES_HTML_AND_REAL(url)
     CONTINUE("Do you have PL as csv + Rule's report + 3dParties files?")
+    dir_files=os.listdir('.')
     report_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.txt')==True],'Choose rule result file:')
     pl_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.csv')==True],'Choose PL file:')
     third_parties_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.txt')==True],'Choose 3rd parties file:')
@@ -1575,7 +1602,7 @@ if test=="Avoid loading javascripts in the head section":
     2)	Close all tabs except NV
     3)	Open a new TAB with "Developers Tools" opened
     4)	Start Emulation on NV tab
-    5)	Browse to some site on second TAB
+    5)	Browse to some site on second TAB, CNN for example
     6)	Stop NV once site is loaded
     7)	On second TAB stop recording and use "Save as HAR with content" on "Network" and save all the content into *.har file
     8)	Run NV analyzing and save PL file as *csv (Open *.pcap file with Wireshark go to : File - Export Packet Dissections - As CSV)
@@ -1585,6 +1612,7 @@ if test=="Avoid loading javascripts in the head section":
     '''
     print usage
     CONTINUE('Are you ready to start analyzing process?')
+    dir_files=os.listdir('.')
     har_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.har')==True],'Choose *har file:')
     report_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.txt')==True],'Choose rule result file:')
     pl_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.csv')==True],'Choose PL file:')
@@ -1617,7 +1645,7 @@ if test=="Avoid loading javascripts in the head section":
         r.update({'Is_In_PL':in_pl})
         print r
         result_list.append(r)
-    result_file=har_file.replace('.har','.csv')
+    result_file='Avoid_loading_javascripts_in_the_head_section.csv'
     WRITE_DICTS_TO_CSV(result_file,result_list)
     SPEC_PRINT(['Your result file is ready!!!','File name: '+result_file])
 
