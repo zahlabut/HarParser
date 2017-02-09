@@ -655,7 +655,7 @@ RULES=[
     'Minimize number of third-party resources',
     'Add long term headers expiration dates (Explicitly control caching)',
     'Use a Content Delivery Network (CDN)',
-    "Don't download the same data twice",
+    #"Don't download the same data twice",
     'Make fewer HTTP requests',
     #'Avoid large objects',
     #'Avoid referencing images in stylesheets',
@@ -1256,6 +1256,7 @@ if test=="Don't download the same data twice":
     '''
     print usage
     CONTINUE('Are you ready to start analyzing process?')
+    dir_files=os.listdir('.')
     har_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.har')==True],'Choose *har file:')
     report_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.txt')==True],'Choose rule result file:')
     pl_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.csv')==True],'Choose PL file:')
@@ -1283,7 +1284,7 @@ if test=="Don't download the same data twice":
         r.update({'Is_In_PL':in_pl})
         print r
         result_list.append(r)
-    result_file=har_file.replace('.har','.csv')
+    result_file=test.replace(' ','_')+'.csv'
     WRITE_DICTS_TO_CSV(result_file,result_list)
     SPEC_PRINT(['Your result file is ready!!!','File name: '+result_file])
 
