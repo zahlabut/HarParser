@@ -647,7 +647,7 @@ RULES=[
     '*** Cleaner ***',
     'Validate JPG reported total values',
     'Reduce the size of your images',
-    'Compress Components',
+    #'Compress Components',
     'Try to reduce the size of the cookies',
     'Use fewer domains',
     'HTTP Server for "Avoid 4xx and 5xx status codes" rule testing',
@@ -658,8 +658,8 @@ RULES=[
     "Don't download the same data twice",
     'Make fewer HTTP requests',
     #'Avoid large objects',
-    'Avoid referencing images in stylesheets',
-    'Avoid URL redirects',
+    #'Avoid referencing images in stylesheets',
+    #'Avoid URL redirects',
     'Minify your textual components',
     #'Avoid image scaling in HTML',
     'Leverage proxy caching',
@@ -820,9 +820,10 @@ if test=='Compress Components':
     9)	Save NV rule's report as *.csv in report.txt file
     10)	Open created result file with Excel and analyze the result according rule's defenition, result file contains the following columns:
     ['Content-Length', 'Code', 'Accept-Encoding', 'Response_Headers', 'Content-Encoding', 'URL', 'Response_Body_Size', 'Is_In_PL', 'Is_in_3d_Party', 'Content-Type', 'Parsed_URL_Path', 'Is_In_Rule','Referer']
-    Note: see Issue 20340, you can see current implementation there'''
+    Note: images are already compressed, so this rule is relevant only for textual content'''
     print usage
     CONTINUE('Are you ready to start analyzing process?')
+    dir_files=os.listdir('.')
     har_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.har')==True],'Choose *har file:')
     report_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.txt')==True],'Choose rule result file:')
     pl_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.csv')==True],'Choose PL file:')
@@ -850,7 +851,7 @@ if test=='Compress Components':
         d.update({'Is_In_PL':in_pl})
         print d
         result_list.append(d)
-    result_file=har_file.replace('.har','.csv')
+    result_file=test.replace(' ','_')+'.csv'
     WRITE_DICTS_TO_CSV(result_file,result_list)
     SPEC_PRINT(['Your result file is ready!!!','File name: '+result_file])
 
@@ -1310,6 +1311,7 @@ if test=="Make fewer HTTP requests":
     '''
     print usage
     CONTINUE('Are you ready to start analyzing process?')
+    dir_files=os.listdir('.')
     har_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.har')==True],'Choose *har file:')
     report_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.txt')==True],'Choose rule result file:')
     pl_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.csv')==True],'Choose PL file:')
@@ -1340,7 +1342,7 @@ if test=="Make fewer HTTP requests":
         if css_print=='No':
             print r
         result_list.append(r)
-    result_file=har_file.replace('.har','.csv')
+    result_file=test.replace(' ','_')+'.csv'
     WRITE_DICTS_TO_CSV(result_file,result_list)
     SPEC_PRINT(['Your result file is ready!!!','File name: '+result_file])
 
@@ -1463,6 +1465,7 @@ if test=='Avoid URL redirects':
     '''
     print usage
     CONTINUE('Are you ready to start analyzing process?')
+    dir_files=os.listdir('.')
     har_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.har')==True],'Choose *har file:')
     report_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.txt')==True],'Choose rule result file:')
     pl_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.csv')==True],'Choose PL file:')
@@ -1489,7 +1492,7 @@ if test=='Avoid URL redirects':
         r.update({'Is_In_PL':in_pl})
         print r
         result_list.append(r)
-    result_file=har_file.replace('.har','.csv')
+    result_file=test.replace(' ','_')+'.csv'
     WRITE_DICTS_TO_CSV(result_file,result_list)
     SPEC_PRINT(['Your result file is ready!!!','File name: '+result_file])
 
