@@ -650,8 +650,8 @@ RULES=[
     #'Compress Components',
     'Try to reduce the size of the cookies',
     'Use fewer domains',
-    'HTTP Server for "Avoid 4xx and 5xx status codes" rule testing',
-    'HTTP Client for "Avoid 4xx and 5xx status codes" rule testing',
+    #'HTTP Server for "Avoid 4xx and 5xx status codes" rule testing',
+    #'HTTP Client for "Avoid 4xx and 5xx status codes" rule testing',
     'Minimize number of third-party resources',
     'Add long term headers expiration dates (Explicitly control caching)',
     'Use a Content Delivery Network (CDN)',
@@ -988,15 +988,16 @@ if test=='HTTP Server for "Avoid 4xx and 5xx status codes" rule testing':
 
 if test=='HTTP Client for "Avoid 4xx and 5xx status codes" rule testing':
     usage='''### USAGE ###
-    1) Verify that you don't have connectivity issues, by browsing to your server http://<AWS_IP>:<SERVER_PORT>/return_code=200/200.jpg
-        from your client side (wget or real Browser),you supposed to:
+    1) On Remote machine start Server side script ('HTTP Server for "Avoid 4xx and 5xx status codes" rule testing')
+    2) Verify that you don't have connectivity issues, by browsing to your server http://<AWS_IP>:<SERVER_PORT>/return_code=200/200.jpg
+        from your client side (wget or real Browser),you supposed to get:
         * HTTP response 200 OK + image
         * Proper output on server side script, for example:
             52.3.119.102 - - [26/May/2016 13:38:08] "GET /return_code=200/200.jpg HTTP/1.1" 200 -
         Note: client URL in example above was http://52.20.143.142:8080/return_code=200/200.jpg
     2) Start NV Emulation
-    3) Run HTTP requests to all posible HTTP codes (this is what this script section does)
-    4) Run NV Analyzing
+    3) Run HTTP requests to all standard HTTP codes (this is what this script section does)
+    4) Run NV Analyzing (Make sure that Server's is included in "HTTP analysis to be conducted on port(s):"
     '''
     print usage
     CONTINUE('Are you ready to continue?')
@@ -1016,6 +1017,11 @@ if test=='HTTP Client for "Avoid 4xx and 5xx status codes" rule testing':
     codes_to_check.insert(0,'Sent HTTP Requests ('+str(loop_per_request)+' requests per status code) are:')
     codes_to_check=[str(i) for i in codes_to_check]
     SPEC_PRINT(codes_to_check)
+    SPEC_PRINT(['1) Open NV report','2) Pass over "Avoid 4xx and 5xx status codes" rule','3) Make sure that you see all received status codes (100 - 526)'])
+
+
+
+
 
 
 
