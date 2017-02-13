@@ -35,7 +35,7 @@ def GET_ALL_SCRIPS_FROM_HEAD_HTML_TAG(data):
 
 def IS_MINIFY_WITH_SELENIUM(url,sel_timeout=60):
     print url
-    driver = webdriver.Firefox()
+    driver = webdriver.Chrome()
     driver.delete_all_cookies()
     driver.set_page_load_timeout(sel_timeout)
     start_time=time.time()
@@ -48,14 +48,12 @@ def IS_MINIFY_WITH_SELENIUM(url,sel_timeout=60):
         if "Shrunk it down by" in page_source or "Could not shrink down any further" in page_source or time.time()>iterupt_time:
             exit_while=True
         time.sleep(1)
-
     driver.quit()
     relevant_line=None
     message=None
     shrunk_percentage=None
-    for line in page_source.split('\n'):
-        if 'Shrunk' in line:
-            relevant_line=line.strip()
+    soup=BeautifulSoup(page_source,'lxml')
+    relevant_line=str(soup.find("span", {"id": "status-url"}))
     if relevant_line!=None:
         message=relevant_line.split('"status-url">')[-1].split('<')[0]
         shrunk_percentage=message.split('(')[-1].split('%')[0]
@@ -645,26 +643,26 @@ TOOL_DESCRIPTION=['NV_Rules_Analyser_Tool','V 1.0','Designed by: Arkady','Goodby
 SPEC_PRINT(TOOL_DESCRIPTION)
 RULES=[
     '*** Cleaner ***',
-    'Validate JPG reported total values',
+    #'Validate JPG reported total values',
     'Reduce the size of your images',
     #'Compress Components',
-    'Try to reduce the size of the cookies',
-    'Use fewer domains',
+    #'Try to reduce the size of the cookies',
+    #'Use fewer domains',
     #'HTTP Server for "Avoid 4xx and 5xx status codes" rule testing',
     #'HTTP Client for "Avoid 4xx and 5xx status codes" rule testing',
-    'Minimize number of third-party resources',
+    #'Minimize number of third-party resources',
     'Add long term headers expiration dates (Explicitly control caching)',
     'Use a Content Delivery Network (CDN)',
     #"Don't download the same data twice",
-    'Make fewer HTTP requests',
+    #'Make fewer HTTP requests',
     #'Avoid large objects',
     #'Avoid referencing images in stylesheets',
     #'Avoid URL redirects',
-    'Minify your textual components',
+    #'Minify your textual components',
     #'Avoid image scaling in HTML',
-    'Leverage proxy caching',
+    'Leverage proxy caching'''
     #'Avoid loading javascripts in the head section',
-    '''Specify your HTML documents' character sets'''
+    #'''Specify your HTML documents' character sets'''
     ]
 
 
@@ -727,6 +725,7 @@ if test=='Validate JPG reported total values':
         Into some *.txt file (inside NV_Rules_Analyzer) directory'''
     print usage
     CONTINUE('Are you ready to start analyzing process?')
+    dir_files=os.listdir('.')
     report_jpg_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.txt')==True],'Choose rule result (JPG images section) file:')
     data=open(report_jpg_file,'r').readlines()
     #For JPG
@@ -763,6 +762,10 @@ if test=='Reduce the size of your images':
     '''
     print usage
     CONTINUE('Are you ready to start analyzing process?')
+    dir_files=[fil for fil in os.listdir('.') if fil.endswith('.py')==False and fil.startswith('.')==False]
+    for root, dirnames, filenames in os.walk('.'):
+        break
+    directories=[d for d in dirnames if d.startswith('.')==False]
     har_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.har')==True],'Choose *har file:')
     report_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.txt')==True],'Choose rule result file:')
     pl_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.csv')==True],'Choose PL file:')
@@ -802,7 +805,7 @@ if test=='Reduce the size of your images':
 
         print r
         result_list.append(r)
-    result_file=har_file.replace('.har','.csv')
+    result_file=test.replace(' ','_')+'.csv'
     WRITE_DICTS_TO_CSV(result_file,result_list)
     SPEC_PRINT(['Your result file is ready!!!','File name: '+result_file])
 
@@ -872,6 +875,7 @@ if test=='Try to reduce the size of the cookies':
     '''
     print usage
     CONTINUE('Are you ready to start analyzing process?')
+    dir_files=os.listdir('.')
     har_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.har')==True],'Choose *har file:')
     report_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.txt')==True],'Choose rule result file:')
     pl_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.csv')==True],'Choose PL file:')
@@ -899,7 +903,7 @@ if test=='Try to reduce the size of the cookies':
         r.update({'Is_In_PL':in_pl})
         print r
         updated_result.append(r)
-    result_file=har_file.replace('.har','.csv')
+    result_file=test.replace(' ','_')+'.csv'
     WRITE_DICTS_TO_CSV(result_file,updated_result)
     SPEC_PRINT(['Your result file is ready!!!','File name: '+result_file])
 
@@ -924,6 +928,7 @@ if test=='Use fewer domains':
     '''
     print usage
     CONTINUE('Are you ready to start analyzing process?')
+    dir_files=os.listdir('.')
     har_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.har')==True],'Choose *har file:')
     report_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.txt')==True],'Choose rule result file:')
     pl_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.csv')==True],'Choose PL file:')
@@ -964,7 +969,7 @@ if test=='Use fewer domains':
         r.update({'Is_3d_Party':IS_IN_3D_PARTIES(third_parties_file,r['Host'],r['Referer'])})
         updated_result.append(r)
         print r
-    result_file=har_file.replace('.har','.csv')
+    result_file=test.replace(' ','_')+'.csv'
     WRITE_DICTS_TO_CSV(result_file,updated_result)
     SPEC_PRINT(['Your result file is ready!!!','File name: '+result_file])
 
@@ -1042,6 +1047,7 @@ if test=='Minimize number of third-party resources':
     '''
     print usage
     CONTINUE('Are you ready to start analyzing process?')
+    dir_files=os.listdir('.')
     har_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.har')==True],'Choose *har file:')
     report_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.txt')==True],'Choose rule result file:')
     pl_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.csv')==True],'Choose PL file:')
@@ -1076,7 +1082,7 @@ if test=='Minimize number of third-party resources':
 
         updated_result.append(r)
 
-    result_file=har_file.replace('.har','.csv')
+    result_file=test.replace(' ','_')+'.csv'
     WRITE_DICTS_TO_CSV(result_file,updated_result)
     SPEC_PRINT(['Your result file is ready!!!','File name: '+result_file])
 
@@ -1173,7 +1179,15 @@ if test=='Add long term headers expiration dates (Explicitly control caching)':
 
 if test=='Use a Content Delivery Network (CDN)':
     usage='''### USAGE ###
-    Run on LINUX as script is using "host" tool
+
+    ********************************************************************************************
+    *** Due to the fact that this script uses LINUX "host" utility, you'll need to:          ***
+    *** 1) Install (clone + installing all external Python modules) on your Linux server     ***
+    *** 2) Upload all needed files: *.har, *.csv ...... *.txt to your linux server           ***
+    *** 3) Execute this script (analysing process) on your Linux server                      ***
+    ********************************************************************************************
+
+    Locally (Windows machine) do the following steps:
     1)	Use Chrome
     2)	Close all tabs except NV
     3)	Open a new TAB with "Developers Tools" opened
@@ -1185,11 +1199,19 @@ if test=='Use a Content Delivery Network (CDN)':
     9)	Save NV rule's report as *.csv in report.txt file
     10) Use http://www.cdnplanet.com/tools/cdnfinder/ and type your tested site in "Full site lookup"
     11) Save result table from previous step in cdnplanet.csv (File. verify that you can open it with Excel)
-    12)	Open created result file with Excel and analyze the result according rul'e defenition, result file contains the following columns:
+
+    Remotely (Linux server)
+    1) Upload all files to your Linux server
+    2) Run this script and choose "Use a Content Delivery Network (CDN)"
+
+    Analysing test results:
+    Open created result file with Excel and analyze the result according rul'e defenition, result file contains the following columns:
     ['Status', 'LinuxHostOutput', 'ParsedDomain', 'Host_In_Known_CDNs', 'Host_In_CdnPlanet', 'URL', 'Is_In_Rule', 'Is_In_PL', 'Host', 'Referer', 'Is_in_3d_Party', 'Parsed_URL_Path', 'Size']
     '''
+
     print usage
     CONTINUE('Are you ready to start analyzing process?')
+    dir_files=os.listdir('.')
     har_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.har')==True],'Choose *har file:')
     report_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.txt')==True],'Choose rule result file:')
     pl_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.csv')==True],'Choose PL file:')
@@ -1240,7 +1262,7 @@ if test=='Use a Content Delivery Network (CDN)':
 
         print d
         result_list.append(d)
-    result_file=har_file.replace('.har','.csv')
+    result_file=test.replace(' ','_')+'.csv'
     WRITE_DICTS_TO_CSV(result_file,result_list)
     SPEC_PRINT(['Your result file is ready!!!','File name: '+result_file])
 
@@ -1313,8 +1335,13 @@ if test=="Make fewer HTTP requests":
     Where:
     URL_IN_CSS --> list of *.css where object presents
     CSS_Content_From_WEB --> means that CSS content was fetched from WEB directly (Sometimes 'text' content is missing in *.har)
-    Note: in case you are testing "Avoid referencing images in stylesheets" verify using Result *.csv file that reported
+
+    Notes:
+    1) In case you are testing "Avoid referencing images in stylesheets" verify using Result *.csv file that reported
     images per CSS are the same as in CSV (Number of images and their paths)
+    2) In case you are testing "Make fewer HTTP requests" rule
+        Use "Content-Type" field to count the number of requested: JS ans CSS objects
+        Use "Referer" field to count the number of "Static Objects"
     '''
     print usage
     CONTINUE('Are you ready to start analyzing process?')
@@ -1525,6 +1552,7 @@ if test=="Minify your textual components":
     '''
     print usage
     CONTINUE('Are you ready to start analyzing process?')
+    dir_files=os.listdir('.')
     har_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.har')==True],'Choose *har file:')
     report_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.txt')==True],'Choose rule result file:')
     pl_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.csv')==True],'Choose PL file:')
@@ -1551,7 +1579,7 @@ if test=="Minify your textual components":
         r.update({'Is_In_PL':in_pl})
         print r
         result_list.append(r)
-    result_file=har_file.replace('.har','.csv')
+    result_file=test.replace(' ','_')+'.csv'
     WRITE_DICTS_TO_CSV(result_file,result_list)
     SPEC_PRINT(['Your result file is ready!!!','File name: '+result_file])
 
@@ -1677,6 +1705,7 @@ if test=='''Specify your HTML documents' character sets''':
     '''
     print usage
     CONTINUE('Are you ready to start analyzing process?')
+    dir_files=os.listdir('.')
     har_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.har')==True],'Choose *har file:')
     report_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.txt')==True],'Choose rule result file:')
     pl_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.csv')==True],'Choose PL file:')
@@ -1708,7 +1737,7 @@ if test=='''Specify your HTML documents' character sets''':
         del r['md5']
         print r
         result_list.append(r)
-    result_file=har_file.replace('.har','.csv')
+    result_file=test.replace(' ','_')+'.csv'
     WRITE_DICTS_TO_CSV(result_file,result_list)
     SPEC_PRINT(['Your result file is ready!!!','File name: '+result_file])
 
