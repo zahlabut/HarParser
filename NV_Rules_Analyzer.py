@@ -643,26 +643,26 @@ TOOL_DESCRIPTION=['NV_Rules_Analyser_Tool','V 1.0','Designed by: Arkady','Goodby
 SPEC_PRINT(TOOL_DESCRIPTION)
 RULES=[
     '*** Cleaner ***',
-    #'Validate JPG reported total values',
-    'Reduce the size of your images'
-    #'Compress Components',
-    #'Try to reduce the size of the cookies',
-    #'Use fewer domains',
-    #'HTTP Server for "Avoid 4xx and 5xx status codes" rule testing',
-    #'HTTP Client for "Avoid 4xx and 5xx status codes" rule testing',
-    #'Minimize number of third-party resources',
-    #'Add long term headers expiration dates (Explicitly control caching)',
-    #'Use a Content Delivery Network (CDN)',
-    #"Don't download the same data twice",
-    #'Make fewer HTTP requests',
-    #'Avoid large objects',
-    #'Avoid referencing images in stylesheets',
-    #'Avoid URL redirects',
-    #'Minify your textual components',
-    #'Avoid image scaling in HTML',
-    #'Leverage proxy caching'''
-    #'Avoid loading javascripts in the head section',
-    #'''Specify your HTML documents' character sets'''
+    'Validate JPG reported total values',
+    'Reduce the size of your images',
+    'Compress Components',
+    'Try to reduce the size of the cookies',
+    'Use fewer domains',
+    'HTTP Server for "Avoid 4xx and 5xx status codes" rule testing',
+    'HTTP Client for "Avoid 4xx and 5xx status codes" rule testing',
+    'Minimize number of third-party resources',
+    'Add long term headers expiration dates (Explicitly control caching)',
+    'Use a Content Delivery Network (CDN)',
+    "Don't download the same data twice",
+    'Make fewer HTTP requests',
+    'Avoid large objects',
+    'Avoid referencing images in stylesheets',
+    'Avoid URL redirects',
+    'Minify your textual components',
+    'Avoid image scaling in HTML',
+    'Leverage proxy caching',
+    'Avoid loading javascripts in the head section',
+    '''Specify your HTML documents' character sets'''
     ]
 
 
