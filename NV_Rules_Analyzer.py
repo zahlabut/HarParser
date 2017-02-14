@@ -432,13 +432,13 @@ def GET_ALL_RESPONSE_HEADERS(har_file):
     return all_urls
 
 def GET_IMAGE_RESOLUTION(img_path):
-    #try:
-    im = Image.open(img_path)
-    width, height = im.size
-    return{'Width':width,'Height':height}
-    #except Exception,e:
-    #    print e
-    #    return {'Width':None,'Height':None}
+    try:
+        im = Image.open(img_path)
+        width, height = im.size
+        return{'Width':width,'Height':height}
+    except Exception,e:
+        print e
+        return {'Width':None,'Height':None}
 
 def GET_ALL_RECEIVED_OBJECT_FROM_HAR(har_file):
     data_to_return_list=[]
@@ -644,15 +644,15 @@ SPEC_PRINT(TOOL_DESCRIPTION)
 RULES=[
     '*** Cleaner ***',
     #'Validate JPG reported total values',
-    'Reduce the size of your images',
+    'Reduce the size of your images'
     #'Compress Components',
     #'Try to reduce the size of the cookies',
     #'Use fewer domains',
     #'HTTP Server for "Avoid 4xx and 5xx status codes" rule testing',
     #'HTTP Client for "Avoid 4xx and 5xx status codes" rule testing',
     #'Minimize number of third-party resources',
-    'Add long term headers expiration dates (Explicitly control caching)',
-    'Use a Content Delivery Network (CDN)',
+    #'Add long term headers expiration dates (Explicitly control caching)',
+    #'Use a Content Delivery Network (CDN)',
     #"Don't download the same data twice",
     #'Make fewer HTTP requests',
     #'Avoid large objects',
@@ -660,7 +660,7 @@ RULES=[
     #'Avoid URL redirects',
     #'Minify your textual components',
     #'Avoid image scaling in HTML',
-    'Leverage proxy caching'''
+    #'Leverage proxy caching'''
     #'Avoid loading javascripts in the head section',
     #'''Specify your HTML documents' character sets'''
     ]
@@ -1107,6 +1107,7 @@ if test=='Add long term headers expiration dates (Explicitly control caching)':
     '''
     print usage
     CONTINUE('Are you ready to start analyzing process?')
+    dir_files=os.listdir('.')
     firefox_cache_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.txt')==True],'Choose Firefox cahed files ("about:cache") result file:')
     har_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.har')==True],'Choose *har file:')
     report_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.txt')==True],'Choose rule result file:')
@@ -1170,7 +1171,7 @@ if test=='Add long term headers expiration dates (Explicitly control caching)':
                 d.update({'Cache_Headers_Keys':item['Cache_Headers'].keys()})
                 print d
         result_list.append(d)
-    result_file=har_file.replace('.har','.csv')
+    result_file=test.replace(' ','_')+'.csv'
     WRITE_DICTS_TO_CSV(result_file,result_list)
     SPEC_PRINT(['Your result file is ready!!!','File name: '+result_file])
 
@@ -1601,6 +1602,7 @@ if test=="Leverage proxy caching":
     '''
     print usage
     CONTINUE('Are you ready to start analyzing process?')
+    dir_files=os.listdir('.')
     har_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.har')==True],'Choose *har file:')
     report_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.txt')==True],'Choose rule result file:')
     pl_file=CHOOSE_OPTION_FROM_LIST_1([f for f in dir_files if f.endswith('.csv')==True],'Choose PL file:')
@@ -1627,7 +1629,7 @@ if test=="Leverage proxy caching":
         r.update({'Is_In_PL':in_pl})
         print r
         result_list.append(r)
-    result_file=har_file.replace('.har','.csv')
+    result_file=test.replace(' ','_')+'.csv'
     WRITE_DICTS_TO_CSV(result_file,result_list)
     SPEC_PRINT(['Your result file is ready!!!','File name: '+result_file])
 
